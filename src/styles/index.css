@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #1677ff;
+  --color-page: #f7f8fa;
+  --color-surface: #ffffff;
+  --radius-card: 8px;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Roboto,
+    sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-page);
+    color: #1f2329;
+    font-family: var(--font-sans);
+  }
+}
