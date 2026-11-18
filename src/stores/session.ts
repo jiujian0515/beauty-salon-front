@@ -4,15 +4,18 @@ import { configureHttpAuth } from '@/api/http'
 import type { Role } from '@/constants/permissions'
 
 export interface SessionUser {
-  id: number
+  /** 后端 Long 统一序列化为字符串（JacksonConfig），前端一律按字符串处理 */
+  id: string
   name: string
   role: Role
-  merchantId: number
+  merchantId: string | null
+  phone?: string
 }
 
 interface SessionState {
   token: string | null
   user: SessionUser | null
+  setToken: (token: string) => void
   setSession: (session: { token: string; user: SessionUser }) => void
   updateUser: (user: SessionUser) => void
   clear: () => void
@@ -26,6 +29,7 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       token: null,
       user: null,
+      setToken: (token) => set({ token }),
       setSession: ({ token, user }) => set({ token, user }),
       updateUser: (user) => set({ user }),
       clear: () => set({ token: null, user: null }),

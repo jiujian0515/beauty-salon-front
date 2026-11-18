@@ -12,7 +12,8 @@ export const env = {
   pollIntervalMs: toNumber(rawEnv.VITE_POLL_INTERVAL_MS, 30_000),
   slotGrainMinutes: toNumber(rawEnv.VITE_SLOT_GRAIN_MINUTES, 15),
   appVersion: rawEnv.VITE_APP_VERSION ?? '0.0.0',
-  authHeader: 'satoken',
+  /** 与后端 sa-token.token-name 一致：Authorization */
+  authHeader: 'Authorization',
 } as const
 
 export const isProduction = env.appEnv === 'prod'

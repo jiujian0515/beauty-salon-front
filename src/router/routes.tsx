@@ -4,6 +4,7 @@ import {
   CalendarOutlined,
   DashboardOutlined,
   DollarOutlined,
+  SafetyCertificateOutlined,
   ScheduleOutlined,
   ScissorOutlined,
   TeamOutlined,
@@ -33,6 +34,7 @@ export const ROUTE_META: readonly RouteMeta[] = [
   { path: '/services', label: '服务项目', icon: <ScissorOutlined />, roles: ['STAFF', 'ADMIN'] },
   { path: '/resources', label: '资源', icon: <AppstoreOutlined />, roles: ['STAFF', 'ADMIN'] },
   { path: '/deposits', label: '定金流水', icon: <DollarOutlined />, roles: ['STAFF', 'ADMIN'] },
-  { path: '/staff', label: '员工与角色', icon: <TeamOutlined />, roles: ['ADMIN'] },
+  { path: '/staff', label: '员工', icon: <TeamOutlined />, roles: ['ADMIN'] },
+  { path: '/roles', label: '角色', icon: <SafetyCertificateOutlined />, roles: ['ADMIN'] },
   { path: '/audit-logs', label: '审计日志', icon: <AuditOutlined />, roles: ['ADMIN'] },
 ]

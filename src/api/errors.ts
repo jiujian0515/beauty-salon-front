@@ -48,63 +48,56 @@ export function errorMessage(value: unknown, fallback = '操作未能完成，�
   return fallback
 }
 
-/** 业务码为前端期望语义，最终数字以 README-BTD.md 为准（BTD §7.4） */
+/**
+ * 与后端 ErrorCode 枚举一一对应（5 位：前两位为 HTTP 语义，后三位为业务细分）。
+ * 后端业务失败统一以 HTTP 200 + code !== 0 返回，因此 code 是唯一判定依据。
+ */
 export const BUSINESS_CODE = {
-  OK: 0,
-  UNAUTHORIZED: 1001,
-  TOKEN_EXPIRED: 1002,
-  FORBIDDEN: 1003,
-  VALIDATION_FAILED: 2001,
-  SLOT_SOLD_OUT: 3001,
-  SLOT_LOCKED: 3002,
-  RESERVATION_STATE_INVALID: 3003,
-  BOOKING_LEAD_TIME: 3004,
-  CANCEL_DEADLINE: 3005,
-  SCHEDULE_CONFLICT: 3006,
-  DEPOSIT_NOT_FOUND: 4001,
-  DUPLICATED: 4002,
-  SERVER_ERROR: 5000,
+  SUCCESS: 0,
+  PARAM_ERROR: 40001,
+  NOT_LOGIN: 40101,
+  NO_PERMISSION: 40301,
+  NOT_FOUND: 40401,
+  SLOT_FULL: 40901,
+  STATUS_INVALID: 40902,
+  CANCEL_TOO_LATE: 40903,
+  DUPLICATE_DATA: 40904,
+  SYSTEM_ERROR: 50000,
 } as const
 
 interface BusinessCodeMeta {
   kind: ErrorKind
+  /** 后端未给出可读信息时的兜底文案 */
   message: string
 }
 
 const BUSINESS_CODE_META: Record<number, BusinessCodeMeta> = {
-  [BUSINESS_CODE.UNAUTHORIZED]: { kind: 'unauthorized', message: '登录状态已失效，请重新登录' },
-  [BUSINESS_CODE.TOKEN_EXPIRED]: { kind: 'unauthorized', message: '登录已过期，请重新登录' },
-  [BUSINESS_CODE.FORBIDDEN]: { kind: 'forbidden', message: '无权限执行该操作' },
-  [BUSINESS_CODE.VALIDATION_FAILED]: { kind: 'validation', message: '提交内容有误，请检查后重试' },
-  [BUSINESS_CODE.SLOT_SOLD_OUT]: { kind: 'conflict', message: '该时段已约满，已为你刷新日历' },
-  [BUSINESS_CODE.SLOT_LOCKED]: { kind: 'conflict', message: '该时段已暂停售卖，已为你刷新' },
-  [BUSINESS_CODE.RESERVATION_STATE_INVALID]: {
-    kind: 'conflict',
-    message: '预约状态已变化，已为你刷新',
-  },
-  [BUSINESS_CODE.BOOKING_LEAD_TIME]: {
+  [BUSINESS_CODE.PARAM_ERROR]: { kind: 'validation', message: '提交内容有误，请检查后重试' },
+  [BUSINESS_CODE.NOT_LOGIN]: { kind: 'unauthorized', message: '登录状态已失效，请重新登录' },
+  [BUSINESS_CODE.NO_PERMISSION]: { kind: 'forbidden', message: '无权限执行该操作' },
+  [BUSINESS_CODE.NOT_FOUND]: { kind: 'notFound', message: '记录不存在或已被删除' },
+  [BUSINESS_CODE.SLOT_FULL]: { kind: 'conflict', message: '该时段已约满，已为你刷新' },
+  [BUSINESS_CODE.STATUS_INVALID]: { kind: 'conflict', message: '预约状态已变化，已为你刷新' },
+  [BUSINESS_CODE.CANCEL_TOO_LATE]: {
     kind: 'business',
-    message: '该时段需提前 24 小时预约，请选择更晚的时段',
+    message: '距服务开始不足 24 小时，不可取消',
   },
-  [BUSINESS_CODE.CANCEL_DEADLINE]: {
-    kind: 'business',
-    message: '距服务开始不足 24 小时，不可自助取消，请联系商户处理',
-  },
-  [BUSINESS_CODE.SCHEDULE_CONFLICT]: {
-    kind: 'conflict',
-    message: '排班与既有预约冲突，已标记冲突时段',
-  },
-  [BUSINESS_CODE.DEPOSIT_NOT_FOUND]: { kind: 'business', message: '未找到对应的定金流水' },
-  [BUSINESS_CODE.DUPLICATED]: { kind: 'business', message: '操作已完成，无需重复提交' },
-  [BUSINESS_CODE.SERVER_ERROR]: { kind: 'server', message: '服务暂时不可用，请稍后重试' },
+  [BUSINESS_CODE.DUPLICATE_DATA]: { kind: 'business', message: '数据已存在，请勿重复提交' },
+  [BUSINESS_CODE.SYSTEM_ERROR]: { kind: 'server', message: '服务暂时不可用，请稍后重试' },
 }
 
-export function fromBusinessCode(code: number, fallbackMessage?: string): AppError {
+/**
+ * 业务码 → AppError。后端 message 更贴合具体场景（例如 40101 既表示「未登录」也表示
+ * 「手机号或密码错误」），因此优先使用后端文案，缺失时才用兜底文案。
+ */
+export function fromBusinessCode(code: number, serverMessage?: string): AppError {
   const meta: BusinessCodeMeta | undefined = BUSINESS_CODE_META[code]
-  if (meta) return new AppError({ kind: meta.kind, message: meta.message, code })
+  if (meta) {
+    return new AppError({ kind: meta.kind, message: serverMessage || meta.message, code })
+  }
   return new AppError({
     kind: 'business',
-    message: fallbackMessage || '操作未能完成，请稍后重试',
+    message: serverMessage || '操作未能完成，请稍后重试',
     code,
   })
 }

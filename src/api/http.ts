@@ -103,7 +103,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
 
     if (payload && typeof payload.code === 'number' && payload.code !== 0) {
-      throw fromBusinessCode(payload.code, payload.message)
+      const appError = fromBusinessCode(payload.code, payload.message)
+      // 未登录/登录失效：后端以 HTTP 200 + code 40101 返回，需在此触发统一登出
+      if (appError.kind === 'unauthorized') handleUnauthorized()
+      throw appError
     }
 
     return (payload?.data ?? undefined) as T

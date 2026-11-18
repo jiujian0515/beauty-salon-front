@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/** 断网提示条数据源（BTD §10.13） */
+/** 断网提示条数据源（BTD §10.14） */
 export function useOnlineStatus(): boolean {
   const [online, setOnline] = useState(() => navigator.onLine)
 
