@@ -31,7 +31,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.RESERVATION_CANCEL]: '取消预约与退款',
   [PERMISSIONS.RESERVATION_CHECKIN]: '发起核销',
   [PERMISSIONS.RESERVATION_CHECKIN_FORCE]: '代顾客确认核销',
-  [PERMISSIONS.STAFF_MANAGE]: '员工维护',
+  [PERMISSIONS.STAFF_MANAGE]: '用户维护',
   [PERMISSIONS.ROLE_MANAGE]: '角色维护',
   [PERMISSIONS.AUDIT_READ]: '审计日志查看',
 }
@@ -67,5 +67,5 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   STAFF: '使用后台处理排班与核销，不可修改服务项目与价格，不可取消预约与退款',
-  ADMIN: '拥有商户侧全部权限，含服务项目、员工与角色管理',
+  ADMIN: '拥有商户侧全部权限，含服务项目、用户与角色管理',
 }

@@ -5,9 +5,22 @@ export interface ApiResponse<T> {
   data: T
 }
 
-/** 分页载荷，字段名以后端契约为准，仅在此处适配一次（BTD §7.8） */
+/**
+ * 后端分页原始结构（common.PageResult）。
+ * JacksonConfig 把所有 Long 序列化为字符串，因此 total/page/size/pages 拿到的是字符串，
+ * 必须在接口层归一为数字，页面只消费 {@link PageResult}（BTD §7.8）。
+ */
+export interface BackendPageResult<T> {
+  records: T[]
+  total: string
+  page: string
+  size: string
+  pages: string
+}
+
+/** 归一后的分页结构，页面统一消费这一种 */
 export interface PageResult<T> {
-  list: T[]
+  records: T[]
   total: number
   page: number
   size: number

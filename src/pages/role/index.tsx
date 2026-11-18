@@ -1,47 +1,42 @@
-import { Alert, Card, Table, Tag } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { App, Button, Card, Space, Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PageHeader } from '@/components'
+import { useState } from 'react'
+import { errorMessage } from '@/api/errors'
+import type { Role } from '@/api/role'
+import { PageHeader, QueryBoundary } from '@/components'
 import {
   PERMISSION_LABELS,
+  PERMISSIONS,
   ROLE_DESCRIPTIONS,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
 } from '@/constants/permissions'
-import type { Permission, Role } from '@/constants/permissions'
+import type { Permission, Role as RoleCode } from '@/constants/permissions'
+import { usePermission } from '@/hooks/usePermission'
+import { useRolesQuery } from '@/hooks/useRoles'
+import { formatDateTime } from '@/utils/datetime'
+import { RoleFormDrawer } from './components/RoleFormDrawer'
+import { useDeleteRole } from './hooks'
 
-interface RoleRow {
-  role: Role
-  name: string
-  description: string
-  permissions: readonly Permission[]
-}
+/** 内置角色不允许删除：删除后登录与权限判定都会失去依据 */
+const BUILT_IN_CODES = new Set(['ADMIN', 'STAFF', 'CUSTOMER'])
 
-const ROLE_ROWS: RoleRow[] = (Object.keys(ROLE_PERMISSIONS) as Role[]).map((role) => ({
+const BUILT_IN_ROLE_ROWS = (Object.keys(ROLE_PERMISSIONS) as RoleCode[]).map((role) => ({
   role,
   name: ROLE_LABELS[role],
   description: ROLE_DESCRIPTIONS[role],
   permissions: ROLE_PERMISSIONS[role],
 }))
 
-const columns: ColumnsType<RoleRow> = [
+const permissionColumns: ColumnsType<(typeof BUILT_IN_ROLE_ROWS)[number]> = [
   {
     title: '角色',
     dataIndex: 'name',
-    width: 160,
-    render: (_, row) => (
-      <div className="flex flex-col gap-1">
-        <Tag color={row.role === 'ADMIN' ? 'gold' : 'blue'} className="w-fit">
-          {row.name}
-        </Tag>
-        <span className="text-xs text-slate-400">{row.role}</span>
-      </div>
-    ),
+    width: 120,
+    render: (_, row) => <Tag color={row.role === 'ADMIN' ? 'gold' : 'blue'}>{row.name}</Tag>,
   },
-  {
-    title: '说明',
-    dataIndex: 'description',
-    width: 320,
-  },
+  { title: '说明', dataIndex: 'description', width: 320 },
   {
     title: '可用权限',
     dataIndex: 'permissions',
@@ -56,29 +51,137 @@ const columns: ColumnsType<RoleRow> = [
 ]
 
 export default function RolePage() {
+  const { message, modal } = App.useApp()
+  const canManage = usePermission(PERMISSIONS.ROLE_MANAGE)
+
+  const rolesQuery = useRolesQuery()
+  const deleteMutation = useDeleteRole()
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<Role | null>(null)
+
+  const openCreate = () => {
+    setEditing(null)
+    setFormOpen(true)
+  }
+
+  const openEdit = (record: Role) => {
+    setEditing(record)
+    setFormOpen(true)
+  }
+
+  const handleDelete = (record: Role) => {
+    modal.confirm({
+      title: '删除角色',
+      content: `将删除角色「${record.name}（${record.code}）」。若该角色下仍有用户，删除会被拒绝。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () =>
+        deleteMutation
+          .mutateAsync(record.id)
+          .then(() => message.success('角色已删除'))
+          .catch((err: unknown) => message.error(errorMessage(err))),
+    })
+  }
+
+  const columns: ColumnsType<Role> = [
+    { title: '角色名称', dataIndex: 'name', width: 180 },
+    {
+      title: '角色代码',
+      dataIndex: 'code',
+      width: 180,
+      render: (code: string) => (
+        <Space size={6}>
+          <Tag color="default">{code}</Tag>
+          {BUILT_IN_CODES.has(code) ? <span className="text-xs text-slate-400">内置</span> : null}
+        </Space>
+      ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      width: 200,
+      render: (value: string) => formatDateTime(value),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 160,
+      fixed: 'right',
+      render: (_, record) => {
+        const builtIn = BUILT_IN_CODES.has(record.code)
+        return (
+          <Space size={4}>
+            <Button type="link" size="small" disabled={!canManage} onClick={() => openEdit(record)}>
+              编辑
+            </Button>
+            <Tooltip title={builtIn ? '内置角色不可删除' : undefined}>
+              <Button
+                type="link"
+                size="small"
+                danger
+                disabled={!canManage || builtIn}
+                onClick={() => handleDelete(record)}
+              >
+                删除
+              </Button>
+            </Tooltip>
+          </Space>
+        )
+      },
+    },
+  ]
+
   return (
     <div>
       <PageHeader
         title="角色管理"
-        description="维护商户后台的角色及其可用权限；员工归属哪个角色在「员工」页维护。"
+        description="维护角色字典。账号归属哪个角色在「用户」页维护。"
+        extra={
+          canManage ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              新增角色
+            </Button>
+          ) : null
+        }
       />
+
       <Card>
-        <div className="flex flex-col gap-4">
-          <Alert
-            type="info"
-            showIcon
-            message="角色权限当前由前端常量定义，只读展示"
-            description="后端尚未提供角色维护接口，因此本期展示 PRD §3 确定的角色与权限矩阵；接口就绪后在此页开启新增/编辑。"
-          />
-          <Table<RoleRow>
-            rowKey="role"
+        <QueryBoundary
+          loading={rolesQuery.isLoading}
+          error={rolesQuery.error}
+          onRetry={() => void rolesQuery.refetch()}
+        >
+          <Table<Role>
+            rowKey="id"
             size="middle"
             columns={columns}
-            dataSource={ROLE_ROWS}
+            dataSource={rolesQuery.data ?? []}
+            loading={rolesQuery.isFetching && !rolesQuery.isLoading}
             pagination={false}
           />
-        </div>
+        </QueryBoundary>
       </Card>
+
+      <Card className="mt-4">
+        <Typography.Title level={5} className="!mb-1">
+          内置角色的权限范围
+        </Typography.Title>
+        <Typography.Paragraph type="secondary" className="!mb-4 text-sm">
+          权限点由前端常量定义（与 PRD §3 一致），后端目前仅按角色代码做粗粒度校验；
+          新增的自定义角色在权限矩阵中默认为只读，接入角色权限接口后可在此配置。
+        </Typography.Paragraph>
+        <Table
+          rowKey="role"
+          size="small"
+          columns={permissionColumns}
+          dataSource={BUILT_IN_ROLE_ROWS}
+          pagination={false}
+        />
+      </Card>
+
+      <RoleFormDrawer open={formOpen} record={editing} onClose={() => setFormOpen(false)} />
     </div>
   )
 }

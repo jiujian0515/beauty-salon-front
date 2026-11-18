@@ -44,7 +44,7 @@ export const router = createBrowserRouter([
       {
         element: <RequireRole roles={['ADMIN']} />,
         children: [
-          { path: 'staff', lazy: page(() => import('@/pages/staff')) },
+          { path: 'users', lazy: page(() => import('@/pages/user')) },
           { path: 'roles', lazy: page(() => import('@/pages/role')) },
           { path: 'audit-logs', lazy: page(() => import('@/pages/audit')) },
         ],

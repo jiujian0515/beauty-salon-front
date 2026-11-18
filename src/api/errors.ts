@@ -62,6 +62,7 @@ export const BUSINESS_CODE = {
   STATUS_INVALID: 40902,
   CANCEL_TOO_LATE: 40903,
   DUPLICATE_DATA: 40904,
+  IN_USE: 40905,
   SYSTEM_ERROR: 50000,
 } as const
 
@@ -83,6 +84,7 @@ const BUSINESS_CODE_META: Record<number, BusinessCodeMeta> = {
     message: '距服务开始不足 24 小时，不可取消',
   },
   [BUSINESS_CODE.DUPLICATE_DATA]: { kind: 'business', message: '数据已存在，请勿重复提交' },
+  [BUSINESS_CODE.IN_USE]: { kind: 'business', message: '该数据已被引用，无法删除' },
   [BUSINESS_CODE.SYSTEM_ERROR]: { kind: 'server', message: '服务暂时不可用，请稍后重试' },
 }
 

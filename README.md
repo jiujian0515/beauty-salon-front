@@ -187,7 +187,7 @@ flowchart TB
 
 | 路径 | 职责 |
 |---|---|
-| `src/api/` | 接口层：`http.ts`（实例、超时、鉴权头）、`errors.ts`（`AppError` 与业务码归一）、`queryClient.ts`（QueryClient 与 query key 工厂），以及按模块拆分的接口文件（已实现 `auth.ts`，后续按里程碑补充 `service.ts`、`resource.ts`、`schedule.ts`、`calendar.ts`、`reservation.ts`、`deposit.ts`、`staff.ts`、`role.ts`、`audit.ts`、`dashboard.ts`） |
+| `src/api/` | 接口层：`http.ts`（实例、超时、鉴权头）、`errors.ts`（`AppError` 与业务码归一）、`queryClient.ts`（QueryClient 与 query key 工厂），以及按模块拆分的接口文件（已实现 `auth.ts`、`staff.ts`，后续按里程碑补充 `service.ts`、`resource.ts`、`schedule.ts`、`calendar.ts`、`reservation.ts`、`deposit.ts`、`role.ts`、`audit.ts`、`dashboard.ts`） |
 | `src/assets/` | 静态资源：空态插画、图标、品牌图 |
 | `src/components/` | 公共组件：`PageHeader`、`MoneyText`、`DurationText`、`StatusTag`、`QueryBoundary`、`DangerConfirm`、`PlaceholderPage` |
 | `src/config/` | 环境配置：`env.ts`（读取并校正 `VITE_*` 变量，导出 `env` 与 `isProduction`） |
@@ -988,15 +988,19 @@ PRD §4.1.5、§5.4.3。
 | 接口 | `GET /merchant/deposits`、`GET /merchant/deposits/{id}`、`GET /merchant/deposits/summary`（可选） |
 | 权限与边界 | STAFF 只读、ADMIN 只读 + 导出（导出待确认，§18.2）；不提供手动改流水状态 |
 
-### 10.11 员工管理 `/staff`
+### 10.11 员工管理 `/staff`（已实现）
 
 | 项 | 说明 |
 |---|---|
 | 目标 | 管理员维护员工账号：手机号（登录账号）、姓名、启用状态、密码（PRD §4.2） |
-| 布局 | 列表（姓名、手机号、状态、创建时间）+ 新增/编辑抽屉 + 重置密码弹窗 |
-| 交互与规则 | 手机号校验 `1[3-9]` 开头 11 位且全库唯一；密码 6-32 位，仅新增与重置时可填；编辑为局部更新（不填即不改）；不允许停用自己；删除为逻辑删除并二次确认 |
-| 接口 | `GET/POST /admin/staff`、`GET/PUT/DELETE /admin/staff/{id}`、`PUT /admin/staff/{id}/password`（§7.5） |
+| 布局 | 搜索栏（姓名/手机号）+ 表格（姓名、手机号、状态开关、创建时间、操作）+ 新增/编辑抽屉 + 重置密码弹窗 |
+| 数据流 | **分页查询统一走 hook**：`useStaffListParams()`（分页/关键字与 URL 双向同步）+ `useStaffPageQuery(params)`（`useQuery` + `keepPreviousData`）；变更走 `useCreateStaff` / `useUpdateStaff` / `useDeleteStaff` / `useResetStaffPassword`，成功后失效 `['staff']` |
+| 交互与规则 | 手机号校验 `1[3-9]` 开头 11 位且全库唯一；密码 6-32 位，仅新增与重置时可填；编辑为局部更新（不填即不改）；状态开关可直接启停，**停用需二次确认**并说明「无法登录、历史数据不受影响」；删除为逻辑删除并二次确认；删除本页最后一条时自动回退一页；翻页保留上一页数据避免闪白 |
+| 接口 | `GET/POST /admin/staff`、`PUT/DELETE /admin/staff/{id}`、`PUT /admin/staff/{id}/password`（§7.5） |
+| 分页约定 | 后端 `total/page/size/pages` 为字符串（Long 序列化），在 `api/staff.ts` 归一为数字后交给页面；页面只消费 `PageResult<T>` |
 | 权限与边界 | 仅 ADMIN（`staff:manage`）；不展示密码任何形态；**角色不在此页维护**，员工角色固定为 `STAFF` |
+
+> 关于「不允许停用自己」：员工列表只包含 `role = STAFF` 的记录，而能进入本页的账号必为 `ADMIN`，因此天然不满足，无需额外按钮级拦截。
 
 ### 10.12 角色管理 `/roles`
 
@@ -1346,7 +1350,7 @@ PRD §8 的五条验收标准主要落在后端并发与事务实现上，前端
 | 里程碑 | 范围 | 主要交付物 | 完成判据 |
 |---|---|---|---|
 | M0 脚手架 | 工程初始化、规范、设计令牌、外壳布局、鉴权骨架 | 可运行的空白后台；路由与守卫；`http` 客户端与错误映射；CI 流水线 | 登录真实接口可进入外壳；`tsc`/lint/构建全绿；React 19 + antd + Tailwind 兼容性验证通过 |
-| M1 基础域 | 服务项目、资源管理（含只读态）、员工管理、角色管理 | 四个页面 + 权限收敛 | 各域增删改查按角色正确可见可用 |
+| M1 基础域 | 服务项目、资源管理（含只读态）、员工管理、角色管理 | 员工管理已完成；其余三个页面待做 | 各域增删改查按角色正确可见可用 |
 | M2 排班 | 排班列表、排班表单、生成结果反馈 | 排班页可用 | 保存后能展示生成槽位数并跳转日历 |
 | M3 日历核心 | 日视图（泳道 + 槽位 + 抽屉）、锁定/释放、周视图简化版 | 日历页 | 锁定/释放乐观更新与回滚正确；冲突提示与刷新可用；性能预算达标 |
 | M4 预约闭环 | 预约列表、预约详情、核销（两种模式）、取消退款展示、代客下单 | 预约模块 | 状态映射驱动操作可用性；核销/取消幂等；跨端等待确认可刷新 |
@@ -1553,4 +1557,4 @@ PRD §8 的五条验收标准主要落在后端并发与事务实现上，前端
 
 **联调**：先启动后端 `app`（端口 8080），再用种子账号登录；接口未就绪时页面会停留在错误提示态，属预期。
 
-**当前状态（M0）**：工程骨架、路由与守卫、权限矩阵、`http` 客户端与错误映射、会话管理、设计令牌、公共组件、CI 流水线已完成；各业务页面为占位页，按 §17 的 M1–M6 推进。
+**当前状态**：M0 工程骨架完成（路由与守卫、权限矩阵、`http` 客户端与错误映射、会话管理、设计令牌、公共组件、CI 流水线）；**M1 已完成「员工管理」的完整 CRUD**（分页查询走 hooks，见 §10.11），其余页面仍为占位页，按 §17 的 M1–M6 推进。
