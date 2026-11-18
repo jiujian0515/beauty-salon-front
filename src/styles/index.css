@@ -17,10 +17,25 @@
     height: 100%;
   }
 
+  /* antd <App> 会多渲染一层 div.ant-app，默认无高度，会截断 #root 的 100% 高度链 */
+  #root > .ant-app {
+    min-height: 100%;
+  }
+
   body {
     margin: 0;
     background-color: var(--color-page);
     color: #1f2329;
     font-family: var(--font-sans);
   }
+}
+
+/*
+ * antd 样式由 CSS-in-JS 在运行时注入，属于「无层（unlayered）」样式。
+ * 按 CSS 层叠层规则，无层样式优先级高于任何 @layer 内的样式（与选择器权重无关），
+ * 因此依赖 Tailwind 的 min-h-screen（同在 base 层）会被 .ant-layout 的 min-height: 0 覆盖。
+ * 这里把覆盖规则放在 layer 之外，并用双类选择器确保在无层样式之间也胜出。
+ */
+.ant-layout.app-layout {
+  min-height: 100vh;
 }

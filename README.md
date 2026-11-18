@@ -159,7 +159,7 @@ flowchart TB
 | 风险点 | 说明 | 处置 |
 |---|---|---|
 | React 19 + antd 5 | antd 5 对 React 19 的静态方法（`message`/`notification`/`Modal`）存在兼容问题 | 引入 `@ant-design/v5-patch-for-react-19`，并在 M0 验证 `App.useApp()` 用法 |
-| Tailwind 4 + antd 样式冲突 | Tailwind preflight 重置会干扰 antd 组件内部元素 | M0 完成冲突验证（按钮、输入框、表格、弹层）；分层导入，必要时启用 Tailwind `prefix(tw)` |
+| Tailwind 4 + antd 样式冲突 | ①antd 样式由 CSS-in-JS 运行时注入，属于**无层样式**，按层叠层规则优先于 `@layer` 内的任何 Tailwind 工具类（与选择器权重无关）；②Tailwind preflight 重置会干扰 antd 组件内部元素 | ①需要覆盖 antd 的类（如 `.ant-layout` 的 `min-height: 0`）时，把规则写在 `@layer` **之外**并用双类选择器提权，不要依赖 `min-h-screen` 等工具类；②冲突验证（按钮、输入框、表格、弹层），必要时启用 Tailwind `prefix(tw)` |
 | Tailwind 4 配置形态 | v4 采用 CSS-first 配置，`tailwind.config.js` 不再是唯一入口 | 令牌集中在单一 CSS 入口的 `@theme` 中定义，并与 antd `ConfigProvider.theme.token` 保持同源 |
 | antd 与 dayjs 双实例 | 多版本 dayjs 会导致 locale 与时区插件失效 | 依赖提升策略固定单版本，并在 `pnpm.overrides` 锁定 |
 | 图标整包引入 | `@ant-design/icons` 全量引入体积巨大 | 仅命名导入实际使用的图标；构建后校验 chunk 体积 |

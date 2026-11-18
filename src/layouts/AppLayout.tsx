@@ -69,7 +69,7 @@ export function AppLayout() {
   }
 
   return (
-    <Layout className="min-h-screen">
+    <Layout className="app-layout">
       <Sider
         collapsible
         collapsed={collapsed}
