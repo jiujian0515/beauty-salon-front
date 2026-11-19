@@ -22,6 +22,7 @@ import {
 import { useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { logout } from '@/api/auth'
+import logoUrl from '@/assets/images/logo.png'
 import { env, isProduction } from '@/config/env'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { ROUTE_META } from '@/router/routes'
@@ -78,10 +79,17 @@ export function AppLayout() {
         collapsedWidth={64}
         theme="dark"
       >
-        <div className="flex h-14 items-center justify-center text-white">
-          <Typography.Text strong style={{ color: '#fff' }}>
-            {collapsed ? '美' : '美容院商户后台'}
-          </Typography.Text>
+        <div className="flex h-14 items-center justify-center gap-2 px-3">
+          <img
+            src={logoUrl}
+            alt="美容院商户后台"
+            className="h-8 w-8 shrink-0 rounded-lg object-cover"
+          />
+          {collapsed ? null : (
+            <Typography.Text strong className="whitespace-nowrap" style={{ color: '#f4ece4' }}>
+              美容院商户后台
+            </Typography.Text>
+          )}
         </div>
         <Menu
           theme="dark"

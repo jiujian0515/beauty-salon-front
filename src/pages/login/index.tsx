@@ -202,7 +202,7 @@ export default function LoginPage() {
                     htmlFor="login-phone"
                     className="mb-1.5 block text-xs font-medium text-morandi-charcoal"
                   >
-                    商户账号 / 手机号
+                    账号 / 手机号
                   </label>
                   <Controller
                     control={control}
@@ -217,7 +217,7 @@ export default function LoginPage() {
                           id="login-phone"
                           type="text"
                           autoComplete="username"
-                          placeholder="请输入商户账号或管理员手机号"
+                          placeholder="请输入账号/手机号"
                           aria-invalid={Boolean(fieldState.error)}
                           className={`${INPUT_BASE} ${fieldState.error ? INPUT_ERROR : INPUT_IDLE}`}
                         />
