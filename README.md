@@ -58,25 +58,63 @@
 ## 3. 目录结构
 
 ```
-src/
-  api/         http.ts（实例/超时/鉴权/幂等键）、errors.ts（AppError + 业务码）、
-               queryClient.ts（QueryClient + queryKeys）、auth.ts、user.ts、serviceItem.ts、role.ts
-  components/  PageHeader、ListToolbar、QueryBoundary、StatusTag、MoneyText、DurationText、
-               FormField、DangerConfirm、ResetPasswordModal、PlaceholderPage
-  config/      env.ts（读取并校正 VITE_*，导出 env / isProduction）
-  constants/   permissions.ts（角色、权限点、角色权限矩阵）、status.ts（状态文案与颜色）、
-               constants.ts（分页尺寸、时限、轮询间隔、金额上限）
-  hooks/       useListParams、usePaginatedQuery、useListPage、useInvalidate、usePermission、
-               useRoles、useUrlQueryState、useDebouncedValue、useOnlineStatus
-  layouts/     AppLayout（侧边导航 + 顶栏 + 内容区）、BlankLayout（登录）
-  pages/       login / calendar / dashboard / reservation / schedule / service / resource /
-               deposit / user / role / audit / error
-  router/      index.tsx（路由表 + 懒加载）、guards.tsx（RequireAuth / RequireRole）、
-               routes.tsx（ROUTE_META，菜单与路由共用）
-  stores/      session.ts（token、用户、角色，含 http 鉴权绑定）
-  styles/      index.css（Tailwind 入口与 @theme 令牌）、theme.ts（antd token）
-  types/       api.ts（ApiResponse、PageResult）、domain.ts（状态枚举）
-  utils/       money.ts、datetime.ts、status.ts、permission.ts、format.ts、observability.ts
+beauty-salon-front/
+├── index.html
+├── vite.config.ts                 # 开发代理 /api → localhost:8080、manualChunks、hidden sourcemap
+├── tsconfig.json                  # strict、noUncheckedIndexedAccess、@/* → src/*
+├── eslint.config.js / .prettierrc # 规范与格式
+├── .env.development / .env.production
+└── src/
+    ├── main.tsx                   # 入口：StrictMode、Sentry 初始化、antd React 19 补丁
+    ├── App.tsx                    # Provider 装配：QueryClient → ConfigProvider(zh_CN + antdTheme) → Router
+    ├── vite-env.d.ts
+    ├── api/                       # 接口层：请求 + DTO→ViewModel 适配，页面不直接 fetch
+    │   ├── http.ts                #   fetch 实例：超时、鉴权头、Idempotency-Key、401 并发去重
+    │   ├── errors.ts              #   AppError 与业务码单点映射
+    │   ├── queryClient.ts         #   QueryClient 全局策略 + queryKeys 工厂
+    │   ├── auth.ts                #   登录 / 当前用户 / 登出
+    │   ├── user.ts                #   用户管理（分页、增删改、重置密码）
+    │   ├── serviceItem.ts         #   服务项目（金额字符串 → 整数分）
+    │   └── role.ts                #   角色字典（全局、不分页）
+    ├── components/                # 业务无关公共组件，统一由 index.ts 导出
+    │   ├── PageHeader / ListToolbar / QueryBoundary      # 页头、列表工具栏、加载/空/错误三态
+    │   ├── StatusTag / MoneyText / DurationText          # 状态、金额、时长统一展示
+    │   └── DangerConfirm / FormField / ResetPasswordModal / PlaceholderPage
+    ├── config/env.ts              # VITE_* 归一，导出 env / isProduction
+    ├── constants/
+    │   ├── permissions.ts         #   角色、权限点、ROLE_PERMISSIONS 矩阵
+    │   ├── status.ts              #   预约 / 流水 / 时段状态文案与颜色
+    │   └── constants.ts           #   分页、时限、轮询间隔、金额上限
+    ├── hooks/                     # 通用 hooks
+    │   ├── useListParams / usePaginatedQuery / useListPage   # 列表三件套（URL、分页、搜索草稿）
+    │   ├── usePermission / useRoles
+    │   └── useInvalidate / useUrlQueryState / useDebouncedValue / useOnlineStatus
+    ├── layouts/
+    │   ├── AppLayout.tsx          #   侧边导航（ROUTE_META ∩ 角色）+ 顶栏 + 内容区
+    │   └── BlankLayout.tsx        #   登录页外壳
+    ├── pages/                     # 按业务模块内聚：index.tsx + hooks.ts / schema.ts / components/
+    │   ├── login/                 # 已实现：登录（schema.ts 为 Zod 校验）
+    │   ├── user/                  # 已实现：用户 CRUD、角色分配、重置密码
+    │   ├── service/               # 已实现：服务项目 CRUD、上下架
+    │   ├── role/                  # 已实现：角色字典 CRUD + 内置权限矩阵（只读）
+    │   ├── reservation/           # 占位：index.tsx（列表）、detail.tsx（详情）
+    │   ├── calendar/ dashboard/ schedule/ resource/ deposit/ audit/   # 占位页
+    │   └── error/                 # Forbidden / NotFound / RouteError
+    ├── router/
+    │   ├── index.tsx              #   路由表 + 懒加载 + errorElement
+    │   ├── guards.tsx             #   RequireAuth / RequireRole
+    │   └── routes.tsx             #   ROUTE_META（菜单与路由共用）
+    ├── stores/session.ts          # 会话（token/用户/角色）+ http 鉴权绑定
+    ├── styles/
+    │   ├── index.css              #   Tailwind 入口与 @theme 令牌
+    │   └── theme.ts               #   antd ConfigProvider token
+    ├── types/
+    │   ├── api.ts                 #   ApiResponse、PageResult
+    │   └── domain.ts              #   状态枚举与 StatusMeta
+    ├── utils/
+    │   ├── money.ts / datetime.ts / status.ts    # 分↔元、时区与时限判定、状态派生
+    │   └── permission.ts / format.ts / observability.ts   # 权限判定、脱敏、Sentry 按需初始化
+    └── assets/images/logo.png
 ```
 
 **调用约定**：页面 → `pages/<模块>/hooks.ts`（Query 查询/变更）→ `api/*` → `http`。金额、时间、权限判定统一走 `utils`，页面内不重复实现；页面私有逻辑（`hooks.ts` / `schema.ts` / `components/`）留在模块目录内。
