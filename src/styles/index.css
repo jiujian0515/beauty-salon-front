@@ -8,6 +8,32 @@
   --font-sans:
     -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Roboto,
     sans-serif;
+
+  /* 登录页「雅奢 Morandi」视觉稿取自 src/pages/login/index.html */
+  --color-brand-50: #fbf8f5;
+  --color-brand-100: #f4ece4;
+  --color-brand-200: #e9d9cb;
+  --color-brand-300: #d7bc9f;
+  --color-brand-400: #b89774;
+  --color-brand-500: #9c7a53;
+  --color-brand-600: #836340;
+  --color-brand-700: #694d31;
+  --color-brand-800: #523c26;
+  --color-brand-900: #3a2a1a;
+
+  --color-morandi-sand: #f7f4ef;
+  --color-morandi-cream: #faf8f5;
+  --color-morandi-rose: #efe7e1;
+  --color-morandi-slate: #74706b;
+  --color-morandi-charcoal: #2d2926;
+  --color-morandi-card: #ffffff;
+  --color-morandi-border: #e8e2d9;
+
+  --font-serif: 'Cormorant Garamond', 'Songti SC', 'Noto Serif SC', STSong, SimSun, Georgia, serif;
+
+  --shadow-morandi: 0 20px 40px -15px rgba(115, 99, 83, 0.08), 0 0 1px 1px rgba(115, 99, 83, 0.05);
+  --shadow-morandi-lg:
+    0 30px 60px -20px rgba(82, 60, 38, 0.12), 0 0 1px 1px rgba(184, 151, 116, 0.2);
 }
 
 @layer base {
@@ -38,4 +64,13 @@
  */
 .ant-layout.app-layout {
   min-height: 100vh;
+}
+
+/* 登录页柔光底纹：米色底 + 多层径向渐变，还原设计稿的宣纸质感 */
+.bg-morandi-mesh {
+  background-color: #f7f4ef;
+  background-image:
+    radial-gradient(at 10% 20%, rgba(244, 236, 228, 0.8) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, rgba(233, 217, 203, 0.6) 0px, transparent 40%),
+    radial-gradient(at 50% 85%, rgba(239, 231, 225, 0.9) 0px, transparent 60%);
 }
