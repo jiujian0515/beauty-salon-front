@@ -43,6 +43,7 @@ export const queryKeys = {
   reservationDetail: (id: string) => ['reservations', 'detail', id] as const,
   deposits: (params: Params) => ['deposits', params] as const,
   users: (params: Params) => ['users', params] as const,
+  customers: (params: Params) => ['customers', params] as const,
   roles: () => ['roles'] as const,
   auditLogs: (params: Params) => ['audit', params] as const,
 }

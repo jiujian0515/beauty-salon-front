@@ -1,13 +1,12 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { App, Button, Card, Select, Space, Switch, Table, Tag } from 'antd'
+import { App, Button, Card, Select, Space, Switch, Table, Tag, Tooltip } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useState } from 'react'
 import { errorMessage } from '@/api/errors'
-import type { SysUser } from '@/api/user'
+import type { SysUser, UserRole } from '@/api/user'
 import { ListToolbar, PageHeader, QueryBoundary, ResetPasswordModal } from '@/components'
-import { PERMISSIONS } from '@/constants/permissions'
-import { usePermission } from '@/hooks/usePermission'
 import { useRolesQuery } from '@/hooks/useRoles'
+import { useSessionStore } from '@/stores/session'
 import { formatDateTime } from '@/utils/datetime'
 import { UserFormDrawer } from './components/UserFormDrawer'
 import { useDeleteUser, useResetUserPassword, useUpdateUser, useUserListPage } from './hooks'
@@ -15,12 +14,14 @@ import { useDeleteUser, useResetUserPassword, useUpdateUser, useUserListPage } f
 const ROLE_TAG_COLOR: Record<string, string> = {
   ADMIN: 'gold',
   STAFF: 'blue',
-  CUSTOMER: 'green',
 }
+
+/** 管理员账号的角色、状态与删除均受后端保护 */
+const isAdminAccount = (record: SysUser) => record.roles.some((role) => role.code === 'ADMIN')
 
 export default function UserPage() {
   const { message, modal } = App.useApp()
-  const canManage = usePermission(PERMISSIONS.STAFF_MANAGE)
+  const currentUserId = useSessionStore((state) => state.user?.id)
 
   const list = useUserListPage()
   const rolesQuery = useRolesQuery()
@@ -36,9 +37,6 @@ export default function UserPage() {
     value: role.code,
     label: role.name,
   }))
-
-  const roleLabel = (code: string) =>
-    roleOptions.find((option) => option.value === code)?.label ?? code
 
   const openCreate = () => {
     setEditing(null)
@@ -98,39 +96,52 @@ export default function UserPage() {
     { title: '手机号', dataIndex: 'phone', width: 150 },
     {
       title: '角色',
-      dataIndex: 'role',
-      width: 130,
-      render: (code: string) => (
-        <Space size={4}>
-          <Tag color={ROLE_TAG_COLOR[code] ?? 'default'}>{roleLabel(code)}</Tag>
-          {ROLE_TAG_COLOR[code] ? null : <span className="text-xs text-slate-400">{code}</span>}
-        </Space>
-      ),
+      dataIndex: 'roles',
+      width: 180,
+      render: (roles: UserRole[]) =>
+        roles.length === 0 ? (
+          <span className="text-xs text-slate-400">—</span>
+        ) : (
+          <Space size={4} wrap>
+            {roles.map((role) => (
+              <Tag key={role.id} color={ROLE_TAG_COLOR[role.code] ?? 'default'}>
+                {role.name}
+              </Tag>
+            ))}
+          </Space>
+        ),
     },
-    {
-      title: '所属商户',
-      dataIndex: 'merchantId',
-      width: 110,
-      render: (value: string | null) => (value ? value : '全局'),
-    },
+    // {
+    //   title: '所属商户',
+    //   dataIndex: 'merchantId',
+    //   width: 110,
+    //   render: (value: string | null) => (value ? value : '全局'),
+    // },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 140,
-      render: (_, record) => (
-        <Space size={8}>
-          <Switch
-            size="small"
-            checked={record.status === 1}
-            checkedChildren="启用"
-            unCheckedChildren="停用"
-            disabled={!canManage}
-            loading={updateMutation.isPending && updateMutation.variables?.id === record.id}
-            onChange={(checked) => handleToggleStatus(record, checked)}
-          />
-          {record.status === 1 ? null : <Tag>已停用</Tag>}
-        </Space>
-      ),
+      width: 160,
+      render: (_, record) => {
+        const admin = isAdminAccount(record)
+        return (
+          <Space size={8}>
+            <Tooltip title={admin ? '管理员账号不允许禁用' : undefined}>
+              <span>
+                <Switch
+                  size="small"
+                  checked={record.status === 1}
+                  checkedChildren="启用"
+                  unCheckedChildren="停用"
+                  disabled={admin}
+                  loading={updateMutation.isPending && updateMutation.variables?.id === record.id}
+                  onChange={(checked) => handleToggleStatus(record, checked)}
+                />
+              </span>
+            </Tooltip>
+            {record.status === 1 ? null : <Tag>已停用</Tag>}
+          </Space>
+        )
+      },
     },
     {
       title: '创建时间',
@@ -143,30 +154,46 @@ export default function UserPage() {
       key: 'actions',
       width: 230,
       fixed: 'right',
-      render: (_, record) => (
-        <Space size={4}>
-          <Button type="link" size="small" disabled={!canManage} onClick={() => openEdit(record)}>
-            编辑
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            disabled={!canManage}
-            onClick={() => setResetTarget(record)}
-          >
-            重置密码
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            disabled={!canManage}
-            onClick={() => handleDelete(record)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
+      render: (_, record) => {
+        const admin = isAdminAccount(record)
+        const locked = admin && record.id !== currentUserId
+        return (
+          <Space size={4}>
+            <Tooltip title={locked ? '管理员账号只能由本人维护' : undefined}>
+              <span>
+                <Button type="link" size="small" disabled={locked} onClick={() => openEdit(record)}>
+                  编辑
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={locked ? '管理员账号只能由本人维护' : undefined}>
+              <span>
+                <Button
+                  type="link"
+                  size="small"
+                  disabled={locked}
+                  onClick={() => setResetTarget(record)}
+                >
+                  重置密码
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={admin ? '管理员账号不允许删除' : undefined}>
+              <span>
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  disabled={admin}
+                  onClick={() => handleDelete(record)}
+                >
+                  删除
+                </Button>
+              </span>
+            </Tooltip>
+          </Space>
+        )
+      },
     },
   ]
 
@@ -174,13 +201,11 @@ export default function UserPage() {
     <div>
       <PageHeader
         title="用户管理"
-        description="统一管理管理员、员工与顾客账号，通过角色区分身份。"
+        description="管理后台账号（管理员 / 员工），通过角色区分身份。顾客账号请在「顾客管理」中维护。"
         extra={
-          canManage ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              新增用户
-            </Button>
-          ) : null
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            新增用户
+          </Button>
         }
       />
 

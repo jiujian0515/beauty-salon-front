@@ -1,12 +1,19 @@
 import { http } from './http'
 import type { BackendPageResult, PageResult } from '@/types/api'
 
+/** 用户关联的角色（后端 RoleResponse 的子集） */
+export interface UserRole {
+  id: string
+  name: string
+  code: string
+}
+
 /** 后端 UserResponse（Long 已序列化为字符串） */
 interface UserDto {
   id: string
   phone: string
   nickname: string | null
-  role: string
+  roles: UserRole[] | null
   status: number
   merchantId: string | null
   createdAt: string
@@ -16,11 +23,11 @@ export interface SysUser {
   id: string
   phone: string
   nickname: string
-  /** 角色代码，对应角色字典的 code（ADMIN / STAFF / CUSTOMER / 自定义） */
-  role: string
+  /** 角色列表：用户与角色多对多（后端 user_role 关联表） */
+  roles: UserRole[]
   /** 1 启用 / 0 停用 */
   status: number
-  /** 顾客为 null（全局共享），管理员/员工为当前商户 */
+  /** 后台账号必绑商户；顾客已独立成 customer 表 */
   merchantId: string | null
   createdAt: string
 }
@@ -29,6 +36,7 @@ export interface UserPageQuery {
   page: number
   size: number
   keyword?: string
+  /** 按角色代码筛选 */
   role?: string
 }
 
@@ -36,12 +44,13 @@ export interface UserCreatePayload {
   phone: string
   password: string
   nickname: string
-  role: string
+  /** 角色 id 列表：用户与角色多对多，至少选择一个 */
+  roleIds: string[]
   status?: number
 }
 
 export type UserUpdatePayload = Partial<
-  Pick<UserCreatePayload, 'phone' | 'nickname' | 'role' | 'status'>
+  Pick<UserCreatePayload, 'phone' | 'nickname' | 'roleIds' | 'status'>
 >
 
 function toSysUser(dto: UserDto): SysUser {
@@ -49,7 +58,11 @@ function toSysUser(dto: UserDto): SysUser {
     id: dto.id,
     phone: dto.phone,
     nickname: dto.nickname ?? '',
-    role: dto.role,
+    roles: (dto.roles ?? []).map((role) => ({
+      id: role.id,
+      name: role.name,
+      code: role.code,
+    })),
     status: dto.status,
     merchantId: dto.merchantId ?? null,
     createdAt: dto.createdAt,

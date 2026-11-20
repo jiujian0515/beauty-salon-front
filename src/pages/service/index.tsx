@@ -5,8 +5,6 @@ import { useState } from 'react'
 import { errorMessage } from '@/api/errors'
 import type { ServiceItem } from '@/api/serviceItem'
 import { DurationText, ListToolbar, MoneyText, PageHeader, QueryBoundary } from '@/components'
-import { PERMISSIONS } from '@/constants/permissions'
-import { usePermission } from '@/hooks/usePermission'
 import { formatDateTime } from '@/utils/datetime'
 import { ServiceItemFormDrawer } from './components/ServiceItemFormDrawer'
 import { useDeleteServiceItem, useServiceItemListPage, useUpdateServiceItem } from './hooks'
@@ -18,7 +16,6 @@ const STATUS_OPTIONS = [
 
 export default function ServicePage() {
   const { message, modal } = App.useApp()
-  const canManage = usePermission(PERMISSIONS.SERVICE_WRITE)
 
   const list = useServiceItemListPage()
   const updateMutation = useUpdateServiceItem()
@@ -122,7 +119,6 @@ export default function ServicePage() {
           checked={record.status === 1}
           checkedChildren="上架"
           unCheckedChildren="下架"
-          disabled={!canManage}
           loading={updateMutation.isPending && updateMutation.variables?.id === record.id}
           onChange={(checked) => handleToggleStatus(record, checked)}
         />
@@ -141,16 +137,10 @@ export default function ServicePage() {
       fixed: 'right',
       render: (_, record) => (
         <Space size={4}>
-          <Button type="link" size="small" disabled={!canManage} onClick={() => openEdit(record)}>
+          <Button type="link" size="small" onClick={() => openEdit(record)}>
             编辑
           </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            disabled={!canManage}
-            onClick={() => handleDelete(record)}
-          >
+          <Button type="link" size="small" danger onClick={() => handleDelete(record)}>
             删除
           </Button>
         </Space>
@@ -164,11 +154,9 @@ export default function ServicePage() {
         title="服务项目"
         description="维护服务名称、时长、价格与定金，控制上下架。价格与定金的修改不影响已创建预约。"
         extra={
-          canManage ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              新增服务项目
-            </Button>
-          ) : null
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            新增服务项目
+          </Button>
         }
       />
 
@@ -209,11 +197,7 @@ export default function ServicePage() {
         </QueryBoundary>
       </Card>
 
-      <ServiceItemFormDrawer
-        open={formOpen}
-        record={editing}
-        onClose={() => setFormOpen(false)}
-      />
+      <ServiceItemFormDrawer open={formOpen} record={editing} onClose={() => setFormOpen(false)} />
     </div>
   )
 }

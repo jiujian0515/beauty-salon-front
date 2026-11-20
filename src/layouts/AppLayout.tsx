@@ -19,7 +19,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { logout } from '@/api/auth'
 import logoUrl from '@/assets/images/logo.png'
@@ -27,9 +27,14 @@ import { env, isProduction } from '@/config/env'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { ROUTE_META } from '@/router/routes'
 import { useSessionStore } from '@/stores/session'
-import { hasAnyRole } from '@/utils/permission'
 
 const { Content, Header, Sider } = Layout
+
+const MENU_ITEMS = ROUTE_META.map((item) => ({
+  key: item.path,
+  icon: item.icon,
+  label: item.label,
+}))
 
 export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
@@ -40,16 +45,6 @@ export function AppLayout() {
   const online = useOnlineStatus()
   const user = useSessionStore((state) => state.user)
   const clearSession = useSessionStore((state) => state.clear)
-
-  const menuItems = useMemo(
-    () =>
-      ROUTE_META.filter((item) => hasAnyRole(user?.role, item.roles)).map((item) => ({
-        key: item.path,
-        icon: item.icon,
-        label: item.label,
-      })),
-    [user?.role],
-  )
 
   const activeItem = ROUTE_META.find((item) => location.pathname.startsWith(item.path))
 
@@ -95,7 +90,7 @@ export function AppLayout() {
           theme="dark"
           mode="inline"
           selectedKeys={activeItem ? [activeItem.path] : []}
-          items={menuItems}
+          items={MENU_ITEMS}
           onClick={({ key }) => navigate(key)}
         />
       </Sider>

@@ -9,7 +9,7 @@ const nicknameSchema = z.string().trim().min(1, '请输入姓名').max(64, '姓�
 
 const passwordSchema = z.string().min(6, '密码长度需为 6-32 位').max(32, '密码长度需为 6-32 位')
 
-const roleSchema = z.string().min(1, '请选择角色')
+const roleIdsSchema = z.array(z.string()).min(1, '请至少选择一个角色')
 
 const statusSchema = z.union([z.literal(1), z.literal(0)])
 
@@ -18,7 +18,7 @@ const baseUserSchema = z.object({
   phone: phoneSchema,
   password: z.string(),
   nickname: nicknameSchema,
-  role: roleSchema,
+  roleIds: roleIdsSchema,
   status: statusSchema,
 })
 

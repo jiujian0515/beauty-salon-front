@@ -5,7 +5,7 @@ import { BlankLayout } from '@/layouts/BlankLayout'
 import { Forbidden } from '@/pages/error/Forbidden'
 import { NotFound } from '@/pages/error/NotFound'
 import { RouteError } from '@/pages/error/RouteError'
-import { RequireAuth, RequireRole } from './guards'
+import { RequireAuth } from './guards'
 
 interface PageModule {
   default: ComponentType
@@ -41,14 +41,10 @@ export const router = createBrowserRouter([
       { path: 'services', lazy: page(() => import('@/pages/service')) },
       { path: 'resources', lazy: page(() => import('@/pages/resource')) },
       { path: 'deposits', lazy: page(() => import('@/pages/deposit')) },
-      {
-        element: <RequireRole roles={['ADMIN']} />,
-        children: [
-          { path: 'users', lazy: page(() => import('@/pages/user')) },
-          { path: 'roles', lazy: page(() => import('@/pages/role')) },
-          { path: 'audit-logs', lazy: page(() => import('@/pages/audit')) },
-        ],
-      },
+      { path: 'users', lazy: page(() => import('@/pages/user')) },
+      { path: 'customers', lazy: page(() => import('@/pages/customer')) },
+      { path: 'roles', lazy: page(() => import('@/pages/role')) },
+      { path: 'audit-logs', lazy: page(() => import('@/pages/audit')) },
     ],
   },
   { path: '/403', element: <Forbidden /> },

@@ -54,7 +54,7 @@ const ADMIN_PERMISSIONS: readonly Permission[] = [
   PERMISSIONS.AUDIT_READ,
 ]
 
-/** 角色 → 权限矩阵（PRD §3），判定函数见 utils/permission */
+/** 角色 → 权限矩阵（PRD §3），仅供角色页只读展示；前端当前不做权限校验 */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   STAFF: STAFF_PERMISSIONS,
   ADMIN: ADMIN_PERMISSIONS,

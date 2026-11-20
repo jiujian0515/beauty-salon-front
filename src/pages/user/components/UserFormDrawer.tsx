@@ -17,7 +17,7 @@ export interface UserFormDrawerProps {
   onClose: () => void
 }
 
-const EMPTY_FORM: UserForm = { phone: '', password: '', nickname: '', role: '', status: 1 }
+const EMPTY_FORM: UserForm = { phone: '', password: '', nickname: '', roleIds: [], status: 1 }
 
 export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
   const { message } = App.useApp()
@@ -26,9 +26,12 @@ export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
   const createMutation = useCreateUser()
   const updateMutation = useUpdateUser()
 
+  /** 管理员账号的角色与启用状态受后端保护，不允许在此修改 */
+  const isAdminAccount = record?.roles.some((role) => role.code === 'ADMIN') ?? false
+
   const roleOptions = (rolesQuery.data ?? []).map((role) => ({
-    value: role.code,
-    label: `${role.name}`,
+    value: role.id,
+    label: role.name,
   }))
 
   const {
@@ -49,7 +52,7 @@ export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
             phone: record.phone,
             password: '',
             nickname: record.nickname,
-            role: record.role,
+            roleIds: record.roles.map((role) => role.id),
             status: record.status === 1 ? 1 : 0,
           }
         : EMPTY_FORM,
@@ -68,8 +71,8 @@ export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
           payload: {
             phone: values.phone,
             nickname: values.nickname,
-            role: values.role,
-            status: values.status,
+            // 管理员账号的角色/状态受后端保护，传了会直接报错
+            ...(isAdminAccount ? {} : { roleIds: values.roleIds, status: values.status }),
           },
         },
         {
@@ -88,7 +91,7 @@ export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
         phone: values.phone,
         password: values.password,
         nickname: values.nickname,
-        role: values.role,
+        roleIds: values.roleIds,
         status: values.status,
       },
       {
@@ -160,18 +163,25 @@ export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
         <FormField
           label="角色"
           required
-          error={errors.role?.message}
-          extra="角色来自「角色管理」的角色字典；顾客不绑定商户"
+          error={errors.roleIds?.message}
+          extra={
+            isAdminAccount
+              ? '管理员账号的角色不允许修改'
+              : '可多选，角色来自「角色管理」的角色字典；顾客账号请在「顾客管理」中维护'
+          }
         >
           <Controller
             control={control}
-            name="role"
+            name="roleIds"
             render={({ field, fieldState }) => (
               <Select
                 {...field}
+                mode="multiple"
+                allowClear={false}
                 optionFilterProp="label"
-                placeholder="请选择角色"
+                placeholder="请选择角色（可多选）"
                 loading={rolesQuery.isLoading}
+                disabled={isAdminAccount}
                 options={roleOptions}
                 status={fieldState.error ? 'error' : undefined}
                 style={{ width: '100%' }}
@@ -203,13 +213,19 @@ export function UserFormDrawer({ open, record, onClose }: UserFormDrawerProps) {
           </FormField>
         )}
 
-        <FormField label="状态" required error={errors.status?.message}>
+        <FormField
+          label="状态"
+          required
+          error={errors.status?.message}
+          extra={isAdminAccount ? '管理员账号不允许禁用' : undefined}
+        >
           <Controller
             control={control}
             name="status"
             render={({ field }) => (
               <Radio.Group
                 value={field.value}
+                disabled={isAdminAccount}
                 onChange={(event) => field.onChange(event.target.value)}
                 options={[
                   { label: '启用', value: 1 },

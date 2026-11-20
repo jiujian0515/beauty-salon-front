@@ -21,7 +21,7 @@
 | 模块 | 状态 |
 |---|---|
 | 工程骨架（路由/守卫/权限矩阵/HTTP/会话/设计令牌/公共组件/CI） | 已完成（M0） |
-| 登录、用户管理、服务项目、角色管理 | 已完成，接真实接口 |
+| 登录、用户管理、顾客管理、服务项目、角色管理 | 已完成，接真实接口 |
 | 日历、工作台、排班、资源、预约列表/详情、定金流水、审计日志 | 占位页，按 §13 路线图推进 |
 
 ## 2. 技术栈
@@ -73,7 +73,8 @@ beauty-salon-front/
     │   ├── errors.ts              #   AppError 与业务码单点映射
     │   ├── queryClient.ts         #   QueryClient 全局策略 + queryKeys 工厂
     │   ├── auth.ts                #   登录 / 当前用户 / 登出
-    │   ├── user.ts                #   用户管理（分页、增删改、重置密码）
+    │   ├── user.ts                #   后台账号（分页、增删改、重置密码）
+    │   ├── customer.ts            #   顾客账号（独立于后台账号，含启停/重置密码）
     │   ├── serviceItem.ts         #   服务项目（金额字符串 → 整数分）
     │   └── role.ts                #   角色字典（全局、不分页）
     ├── components/                # 业务无关公共组件，统一由 index.ts 导出
@@ -87,14 +88,14 @@ beauty-salon-front/
     │   └── constants.ts           #   分页、时限、轮询间隔、金额上限
     ├── hooks/                     # 通用 hooks
     │   ├── useListParams / usePaginatedQuery / useListPage   # 列表三件套（URL、分页、搜索草稿）
-    │   ├── usePermission / useRoles
-    │   └── useInvalidate / useUrlQueryState / useDebouncedValue / useOnlineStatus
+    │   └── useRoles / useInvalidate / useUrlQueryState / useDebouncedValue / useOnlineStatus
     ├── layouts/
-    │   ├── AppLayout.tsx          #   侧边导航（ROUTE_META ∩ 角色）+ 顶栏 + 内容区
+    │   ├── AppLayout.tsx          #   侧边导航（ROUTE_META）+ 顶栏 + 内容区
     │   └── BlankLayout.tsx        #   登录页外壳
     ├── pages/                     # 按业务模块内聚：index.tsx + hooks.ts / schema.ts / components/
     │   ├── login/                 # 已实现：登录（schema.ts 为 Zod 校验）
-    │   ├── user/                  # 已实现：用户 CRUD、角色分配、重置密码
+    │   ├── user/                  # 已实现：后台账号 CRUD、角色分配、重置密码
+    │   ├── customer/              # 已实现：顾客 CRUD、启停、重置密码
     │   ├── service/               # 已实现：服务项目 CRUD、上下架
     │   ├── role/                  # 已实现：角色字典 CRUD + 内置权限矩阵（只读）
     │   ├── reservation/           # 占位：index.tsx（列表）、detail.tsx（详情）
@@ -113,7 +114,7 @@ beauty-salon-front/
     │   └── domain.ts              #   状态枚举与 StatusMeta
     ├── utils/
     │   ├── money.ts / datetime.ts / status.ts    # 分↔元、时区与时限判定、状态派生
-    │   └── permission.ts / format.ts / observability.ts   # 权限判定、脱敏、Sentry 按需初始化
+    │   └── format.ts / money.ts / status.ts / observability.ts   # 脱敏、金额、状态文案、Sentry 按需初始化
     └── assets/images/logo.png
 ```
 
@@ -123,29 +124,32 @@ beauty-salon-front/
 
 ### 4.1 路由表
 
-| 路径 | 页面 | 可见角色 | 说明 |
-|---|---|---|---|
-| `/login` | 登录 | 公开 | 已登录访问重定向首页 |
-| `/` | — | 已登录 | 重定向 `/calendar`（日历优先） |
-| `/calendar` | 日历与时段库存 | STAFF / ADMIN | 登录后落地页 |
-| `/dashboard` | 今日概览 | STAFF / ADMIN | |
-| `/reservations` `/reservations/:id` | 预约列表 / 详情 | STAFF / ADMIN | |
-| `/schedules` | 排班管理 | STAFF / ADMIN | |
-| `/services` | 服务项目 | STAFF / ADMIN | 写操作按权限隐藏 |
-| `/resources` | 资源管理 | STAFF / ADMIN | |
-| `/deposits` | 定金流水 | STAFF / ADMIN | |
-| `/users` | 用户管理 | ADMIN | |
-| `/roles` | 角色管理 | ADMIN | |
-| `/audit-logs` | 审计日志 | ADMIN | |
-| `/403` `*` | 403 / 404 | 公开 | `errorElement` 兜底路由异常 |
+| 路径 | 页面 | 说明 |
+|---|---|---|
+| `/login` | 登录 | 公开；已登录访问重定向首页 |
+| `/` | — | 已登录；重定向 `/calendar`（日历优先） |
+| `/calendar` | 日历与时段库存 | 登录后落地页 |
+| `/dashboard` | 今日概览 | |
+| `/reservations` `/reservations/:id` | 预约列表 / 详情 | |
+| `/schedules` | 排班管理 | |
+| `/services` | 服务项目 | |
+| `/resources` | 资源管理 | |
+| `/deposits` | 定金流水 | |
+| `/users` | 后台账号（管理员 / 员工） | |
+| `/customers` | 顾客账号 | 独立账号体系，全局共享 |
+| `/roles` | 角色管理 | |
+| `/audit-logs` | 审计日志 | |
+| `/403` `*` | 403 / 404 | `errorElement` 兜底路由异常 |
 
 约定：
 
 1. 列表筛选与分页写进 URL（`useListParams`），刷新、分享、返回视图一致。
 2. 页面级懒加载：路由用 `page(() => import(...))` 包装，公共依赖留在主 chunk。
-3. 未知路径落 404；已登录但无权限渲染 403，而不是跳回首页。
+3. 当前只做登录校验（`RequireAuth`），**暂不做角色级路由/菜单/按钮权限**；未知路径落 404。
 
 ### 4.2 权限点（`constants/permissions.ts`）
+
+> 说明：当前前端不做按钮级/路由级权限校验，本表仅记录角色 → 权限点的约定（角色页只读展示），后续统一接入页面权限时复用。
 
 | 权限点 | 说明 | STAFF | ADMIN |
 |---|---|:--:|:--:|
@@ -163,9 +167,9 @@ beauty-salon-front/
 
 ### 4.3 实现方式
 
-- **路由级**：`RequireAuth` 拦未登录（带 `redirect`），`RequireRole` 拦角色（渲染 403）。
-- **菜单级**：`AppLayout` 用 `ROUTE_META.filter(hasAnyRole)` 派生导航，无权限项**不渲染**；顶栏含环境角标（非生产）、版本号、数据刷新、离线提示与退出登录。
-- **按钮级**：`usePermission(PERMISSIONS.X)`，无权限不渲染；列表空位用禁用态 + Tooltip 解释。
+- **路由级**：`RequireAuth` 拦未登录（带 `redirect`）；角色级路由守卫暂未启用，后续统一按「路由 / 页面权限」实现。
+- **菜单级**：`AppLayout` 直接由 `ROUTE_META` 派生导航（当前不做角色过滤）；顶栏含环境角标（非生产）、版本号、数据刷新、离线提示与退出登录。
+- **按钮级**：不做按钮权限控制，页面内操作入口统一可用；细粒度访问控制后续由路由 / 页面权限统一收敛。
 - **字段级**：顾客手机号脱敏（`utils/format.ts`）。
 - **角色来源**：只信 `GET /auth/me`；返回 `CUSTOMER` 或未知角色时拒绝登录并清会话。
 - 前端只做可用性收敛，数据隔离依赖服务端按登录态拼 `merchant_id`。
@@ -228,7 +232,8 @@ GET 超时 10s、写操作 20s；`undefined`/`null`/空串参数不发送；外�
 | 模块 | 接口 | 关键约定 |
 |---|---|---|
 | 认证 | `POST /auth/login`、`GET /auth/me`、`POST /auth/logout` | 登录**不返回**用户信息；角色仅接受 `STAFF` / `ADMIN` |
-| 用户 | `GET/POST /admin/users`、`PUT/DELETE /admin/users/{id}`、`PUT /admin/users/{id}/password` | 查询 `page,size,keyword,role`；新增含 `phone,password,nickname,role,status`，编辑为局部更新；校验：手机号 `1[3-9]\d{9}`、姓名 ≤64、密码 6–32 位 |
+| 用户 | `GET/POST /admin/users`、`PUT/DELETE /admin/users/{id}`、`PUT /admin/users/{id}/password` | 查询 `page,size,keyword,role`；新增含 `phone,password,nickname,roleIds,status`（`roleIds` 至少一个），返回 `roles: RoleResponse[]`，编辑为局部更新；校验：手机号 `1[3-9]\d{9}`、姓名 ≤64、密码 6–32 位；仅管理后台账号，`CUSTOMER` 角色会被后端拒绝，管理员账号的角色/状态/删除受保护 |
+| 顾客 | `GET/POST /admin/customers`、`PUT/DELETE /admin/customers/{id}`、`PUT /admin/customers/{id}/password` | 查询 `page,size,keyword`（姓名/手机号模糊）；新增含 `phone,password,nickname,status`，编辑为局部更新；顾客全局共享、不绑商户；删除为逻辑删除并释放手机号 |
 | 服务项目 | `GET/POST /admin/service-items`、`PUT/DELETE /admin/service-items/{id}` | 查询 `page,size,keyword,status`；金额字段 `priceCents`/`depositCents` 为「分」的字符串，DTO 层转 `number` |
 | 角色 | `GET/POST /admin/roles`、`PUT/DELETE /admin/roles/{id}` | 全局字典、不分页；内置角色（`ADMIN`/`STAFF`/`CUSTOMER`）不可删除；删除时角色下仍有用户会被拒绝 |
 
@@ -335,8 +340,9 @@ GET 超时 10s、写操作 20s；`undefined`/`null`/空串参数不发送；外�
 | 页面 | 路由 | 状态 | 要点 |
 |---|---|---|---|
 | 登录 | `/login` | 已实现 | 左品牌区 + 右表单（「雅奢 Morandi」视觉）；账号/密码必填、密码可切换可见；提交中按钮 loading 并展示后端错误文案；成功后按站内 `redirect` 回跳（正则白名单），否则 `/calendar`；token 与用户信息齐备时自动跳首页 |
-| 用户管理 | `/users` | 已实现 | 关键字（姓名/手机号）+ 角色筛选（角色字典复用 `useRolesQuery`）；新增/编辑抽屉（可分配角色）、启用/停用开关（停用二次确认）、重置密码弹窗、逻辑删除；顾客账号 `merchantId` 为空显示「全局」 |
-| 服务项目 | `/services` | 已实现 | 关键字 + 上下架筛选；列表展示时长、价格、定金（`MoneyText`/`DurationText`）；抽屉表单录入（元→分）；上下架开关（下架二次确认）、删除二次确认；写操作按 `service:write` 渲染 |
+| 用户管理 | `/users` | 已实现 | 仅后台账号（管理员 / 员工）：关键字（姓名/手机号）+ 角色筛选（角色字典复用 `useRolesQuery`）；新增/编辑抽屉（角色**多选**，提交 `roleIds`）、启用/停用开关（停用二次确认）、重置密码弹窗、逻辑删除；管理员账号的角色/状态/删除按后端规则禁用 |
+| 顾客管理 | `/customers` | 已实现 | 顾客独立账号体系：关键字（姓名/手机号）；新增/编辑抽屉、启用/停用开关（停用二次确认）、重置密码弹窗、逻辑删除；顾客全局共享，不绑商户 |
+| 服务项目 | `/services` | 已实现 | 关键字 + 上下架筛选；列表展示时长、价格、定金（`MoneyText`/`DurationText`）；抽屉表单录入（元→分）；上下架开关（下架二次确认）、删除二次确认 |
 | 角色管理 | `/roles` | 已实现 | 角色字典 CRUD（内置角色禁删、仍有用户时拒绝）；下方「内置角色权限范围」表只读展示 `ROLE_PERMISSIONS` 常量矩阵 |
 | 工作台 | `/dashboard` | 占位 | 指标卡 + 余量紧张时段 + 待处理清单，60s 轮询 |
 | 日历 | `/calendar` | 占位 | 见 §8 |

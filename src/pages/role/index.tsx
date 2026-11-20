@@ -7,20 +7,18 @@ import type { Role } from '@/api/role'
 import { PageHeader, QueryBoundary } from '@/components'
 import {
   PERMISSION_LABELS,
-  PERMISSIONS,
   ROLE_DESCRIPTIONS,
   ROLE_LABELS,
   ROLE_PERMISSIONS,
 } from '@/constants/permissions'
 import type { Permission, Role as RoleCode } from '@/constants/permissions'
-import { usePermission } from '@/hooks/usePermission'
 import { useRolesQuery } from '@/hooks/useRoles'
 import { formatDateTime } from '@/utils/datetime'
 import { RoleFormDrawer } from './components/RoleFormDrawer'
 import { useDeleteRole } from './hooks'
 
 /** 内置角色不允许删除：删除后登录与权限判定都会失去依据 */
-const BUILT_IN_CODES = new Set(['ADMIN', 'STAFF', 'CUSTOMER'])
+const BUILT_IN_CODES = new Set(['ADMIN'])
 
 const BUILT_IN_ROLE_ROWS = (Object.keys(ROLE_PERMISSIONS) as RoleCode[]).map((role) => ({
   role,
@@ -52,7 +50,6 @@ const permissionColumns: ColumnsType<(typeof BUILT_IN_ROLE_ROWS)[number]> = [
 
 export default function RolePage() {
   const { message, modal } = App.useApp()
-  const canManage = usePermission(PERMISSIONS.ROLE_MANAGE)
 
   const rolesQuery = useRolesQuery()
   const deleteMutation = useDeleteRole()
@@ -113,15 +110,17 @@ export default function RolePage() {
         const builtIn = BUILT_IN_CODES.has(record.code)
         return (
           <Space size={4}>
-            <Button type="link" size="small" disabled={!canManage} onClick={() => openEdit(record)}>
-              编辑
-            </Button>
-            <Tooltip title={builtIn ? '内置角色不可删除' : undefined}>
+            <Tooltip title={builtIn ? '管理员不可编辑' : undefined}>
+              <Button type="link" size="small" disabled={builtIn} onClick={() => openEdit(record)}>
+                编辑
+              </Button>
+            </Tooltip>
+            <Tooltip title={builtIn ? '管理员不可删除' : undefined}>
               <Button
                 type="link"
                 size="small"
                 danger
-                disabled={!canManage || builtIn}
+                disabled={builtIn}
                 onClick={() => handleDelete(record)}
               >
                 删除
@@ -137,13 +136,11 @@ export default function RolePage() {
     <div>
       <PageHeader
         title="角色管理"
-        description="维护角色字典。账号归属哪个角色在「用户」页维护。"
+        description="维护角色字典。账号归属哪些角色在「用户」页维护。"
         extra={
-          canManage ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              新增角色
-            </Button>
-          ) : null
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            新增角色
+          </Button>
         }
       />
 
