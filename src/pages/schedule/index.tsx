@@ -2,7 +2,7 @@ import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { App, Button, Card, DatePicker, Select, Space, Switch, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { Dayjs } from 'dayjs'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { errorMessage } from '@/api/errors'
 import type { Schedule } from '@/api/schedule'
@@ -13,6 +13,7 @@ import { BatchScheduleDrawer } from './components/BatchScheduleDrawer'
 import { ScheduleFormDrawer } from './components/ScheduleFormDrawer'
 import { ScheduleSlotsDrawer } from './components/ScheduleSlotsDrawer'
 import {
+  useBatchDeleteSchedules,
   useDeleteSchedule,
   useResourceSelectOptions,
   useScheduleListPage,
@@ -25,21 +26,36 @@ const STATUS_OPTIONS = [
 ]
 
 export default function SchedulePage() {
-  const { message, modal } = App.useApp()
+  const { message, modal, notification } = App.useApp()
 
   const list = useScheduleListPage()
   const updateMutation = useUpdateSchedule()
   const deleteMutation = useDeleteSchedule()
+  const batchDeleteMutation = useBatchDeleteSchedules()
   const { options: resourceOptions, loading: resourcesLoading } = useResourceSelectOptions()
 
   const [formOpen, setFormOpen] = useState(false)
   const [batchOpen, setBatchOpen] = useState(false)
   const [editing, setEditing] = useState<Schedule | null>(null)
   const [slotsTarget, setSlotsTarget] = useState<Schedule | null>(null)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
 
+  const records = list.data?.records ?? []
   const { startDate, endDate } = list.params.filters
   const rangeValue: [Dayjs, Dayjs] | null =
     startDate && endDate ? [dayjs(startDate), dayjs(endDate)] : null
+
+  /** 切换分页或筛选后清空选择，避免误删不可见的行 */
+  useEffect(() => {
+    setSelectedRowKeys([])
+  }, [
+    list.params.page,
+    list.params.size,
+    list.params.filters.resourceId,
+    list.params.filters.startDate,
+    list.params.filters.endDate,
+    list.params.filters.status,
+  ])
 
   const openCreate = () => {
     setEditing(null)
@@ -88,6 +104,50 @@ export default function SchedulePage() {
             list.handleDeleted()
           })
           .catch((err: unknown) => message.error(errorMessage(err))),
+    })
+  }
+
+  const handleBatchDelete = () => {
+    const ids = selectedRowKeys
+    if (ids.length === 0 || batchDeleteMutation.isPending) return
+    const labelOf = (id: string) => {
+      const record = records.find((item) => item.id === id)
+      return record ? `${record.scheduleDate} ${record.startTime}–${record.endTime}` : `#${id}`
+    }
+
+    modal.confirm({
+      title: `批量删除 ${ids.length} 条排班`,
+      content: '将删除选中排班及其全部时段；已有预约占用的排班会跳过并返回原因。此操作不可恢复。',
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () =>
+        batchDeleteMutation
+          .mutateAsync(ids)
+          .then((result) => {
+            setSelectedRowKeys([])
+            const skippedText = result.skipped
+              .slice(0, 5)
+              .map((item) => `${labelOf(item.id)}：${item.reason}`)
+              .join('；')
+            notification[result.skippedCount > 0 ? 'warning' : 'success']({
+              message: `批量删除完成：成功 ${result.deletedCount} 条，跳过 ${result.skippedCount} 条`,
+              description:
+                result.skippedCount > 0
+                  ? `${skippedText}${result.skipped.length > 5 ? ' …' : ''}`
+                  : undefined,
+            })
+            if (
+              result.deletedCount >= records.length &&
+              records.length > 0 &&
+              list.params.page > 1
+            ) {
+              list.patch({ page: list.params.page - 1 })
+            } else {
+              void list.refetch()
+            }
+          })
+          .catch((error: unknown) => message.error(errorMessage(error))),
     })
   }
 
@@ -240,13 +300,20 @@ export default function SchedulePage() {
               onChange={(value?: string) => list.setFilter('status', value ?? '')}
             />
           </Space>
-          <Button
-            icon={<ReloadOutlined />}
-            loading={list.isFetching && !list.isLoading}
-            onClick={() => void list.refetch()}
-          >
-            刷新
-          </Button>
+          <Space>
+            {selectedRowKeys.length > 0 ? (
+              <Button danger loading={batchDeleteMutation.isPending} onClick={handleBatchDelete}>
+                批量删除（{selectedRowKeys.length}）
+              </Button>
+            ) : null}
+            <Button
+              icon={<ReloadOutlined />}
+              loading={list.isFetching && !list.isLoading}
+              onClick={() => void list.refetch()}
+            >
+              刷新
+            </Button>
+          </Space>
         </div>
 
         <QueryBoundary
@@ -258,7 +325,11 @@ export default function SchedulePage() {
             rowKey="id"
             size="middle"
             columns={columns}
-            dataSource={list.data?.records ?? []}
+            dataSource={records}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys.map(String)),
+            }}
             loading={list.isFetching && !list.isLoading}
             scroll={{ x: 1240 }}
             pagination={list.pagination}

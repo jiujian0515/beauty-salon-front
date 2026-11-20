@@ -3,7 +3,7 @@ import type { BackendPageResult, PageResult } from '@/types/api'
 import type { ResourceType } from '@/types/domain'
 
 /** 后端 ScheduleResponse（Long 已序列化为字符串，时间已格式化为 HH:mm） */
-interface ScheduleDto {
+export interface ScheduleDto {
   id: string
   merchantId: string
   resourceId: string
@@ -49,6 +49,15 @@ export interface Schedule {
   lockedCount: number
   createdAt: string
   updatedAt: string
+}
+
+export interface SlotPageQuery {
+  page: number
+  size: number
+  resourceId?: string
+  startDate?: string
+  endDate?: string
+  status?: number
 }
 
 interface SlotInventoryDto {
@@ -129,7 +138,13 @@ export interface ScheduleBatchResult {
   skipped: ScheduleBatchSkippedItem[]
 }
 
-function toSchedule(dto: ScheduleDto): Schedule {
+export interface ScheduleBatchDeleteResult {
+  deletedCount: number
+  skippedCount: number
+  skipped: Array<{ id: string; reason: string }>
+}
+
+export function toSchedule(dto: ScheduleDto): Schedule {
   return {
     id: dto.id,
     merchantId: dto.merchantId,
@@ -152,7 +167,7 @@ function toSchedule(dto: ScheduleDto): Schedule {
   }
 }
 
-function toSlot(dto: SlotInventoryDto): ScheduleSlot {
+export function toSlot(dto: SlotInventoryDto): ScheduleSlot {
   return {
     id: dto.id,
     resourceId: dto.resourceId,
@@ -218,9 +233,43 @@ export async function deleteSchedule(id: string): Promise<void> {
   await http.delete<void>(`/admin/schedules/${id}`)
 }
 
+/** 批量删除：有占用或预约历史的排班会被跳过并返回原因 */
+export async function batchDeleteSchedules(ids: string[]): Promise<ScheduleBatchDeleteResult> {
+  const dto = await http.post<{
+    deletedCount: number
+    skippedCount: number
+    skipped: Array<{ id: string; reason: string }>
+  }>('/admin/schedules/batch-delete', { ids })
+  return {
+    deletedCount: dto.deletedCount,
+    skippedCount: dto.skippedCount,
+    skipped: dto.skipped ?? [],
+  }
+}
+
 export async function fetchScheduleSlots(id: string): Promise<ScheduleSlot[]> {
   const records = await http.get<SlotInventoryDto[]>(`/admin/schedules/${id}/slots`)
   return records.map(toSlot)
+}
+
+/** 时段库存分页（日历日视图一次取回当天全部时段） */
+export async function fetchSlotPage(query: SlotPageQuery): Promise<PageResult<ScheduleSlot>> {
+  const dto = await http.get<BackendPageResult<SlotInventoryDto>>('/admin/slots', {
+    query: {
+      page: query.page,
+      size: query.size,
+      resourceId: query.resourceId,
+      startDate: query.startDate,
+      endDate: query.endDate,
+      status: query.status,
+    },
+  })
+  return {
+    records: dto.records.map(toSlot),
+    total: Number(dto.total),
+    page: Number(dto.page),
+    size: Number(dto.size),
+  }
 }
 
 export async function lockSlot(id: string): Promise<ScheduleSlot> {

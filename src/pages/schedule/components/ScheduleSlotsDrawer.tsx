@@ -3,7 +3,8 @@ import type { ColumnsType } from 'antd/es/table'
 import { errorMessage } from '@/api/errors'
 import type { Schedule, ScheduleSlot } from '@/api/schedule'
 import { QueryBoundary } from '@/components'
-import { useLockSlot, useScheduleSlots, useUnlockSlot } from '../hooks'
+import { useLockSlot, useUnlockSlot } from '@/hooks/useSlotMutations'
+import { useScheduleSlots } from '../hooks'
 
 export interface ScheduleSlotsDrawerProps {
   open: boolean
