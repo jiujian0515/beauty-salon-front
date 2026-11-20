@@ -21,8 +21,8 @@
 | 模块 | 状态 |
 |---|---|
 | 工程骨架（路由/守卫/权限矩阵/HTTP/会话/设计令牌/公共组件/CI） | 已完成（M0） |
-| 登录、用户管理、顾客管理、服务项目、资源管理、角色管理 | 已完成，接真实接口 |
-| 日历、工作台、排班、预约列表/详情、定金流水、审计日志 | 占位页，按 §13 路线图推进 |
+| 登录、用户管理、顾客管理、服务项目、资源管理、排班管理、角色管理 | 已完成，接真实接口 |
+| 日历、工作台、预约列表/详情、定金流水、审计日志 | 占位页，按 §13 路线图推进 |
 
 ## 2. 技术栈
 
@@ -98,9 +98,10 @@ beauty-salon-front/
     │   ├── customer/              # 已实现：顾客 CRUD、启停、重置密码
     │   ├── service/               # 已实现：服务项目 CRUD、上下架
     │   ├── resource/              # 已实现：技师/床位 CRUD、启停
+    │   ├── schedule/              # 已实现：排班 CRUD、批量排班、时段库存锁定/释放
     │   ├── role/                  # 已实现：角色字典 CRUD + 内置权限矩阵（只读）
     │   ├── reservation/           # 占位：index.tsx（列表）、detail.tsx（详情）
-    │   ├── calendar/ dashboard/ schedule/ deposit/ audit/   # 占位页
+    │   ├── calendar/ dashboard/ deposit/ audit/   # 占位页
     │   └── error/                 # Forbidden / NotFound / RouteError
     ├── router/
     │   ├── index.tsx              #   路由表 + 懒加载 + errorElement
@@ -237,13 +238,14 @@ GET 超时 10s、写操作 20s；`undefined`/`null`/空串参数不发送；外�
 | 顾客 | `GET/POST /admin/customers`、`PUT/DELETE /admin/customers/{id}`、`PUT /admin/customers/{id}/password` | 查询 `page,size,keyword`（姓名/手机号模糊）；新增含 `phone,password,nickname,status`，编辑为局部更新；顾客全局共享、不绑商户；删除为逻辑删除并释放手机号 |
 | 服务项目 | `GET/POST /admin/service-items`、`PUT/DELETE /admin/service-items/{id}` | 查询 `page,size,keyword,status`；金额字段 `priceCents`/`depositCents` 为「分」的字符串，DTO 层转 `number` |
 | 角色 | `GET/POST /admin/roles`、`PUT/DELETE /admin/roles/{id}` | 全局字典、不分页；内置角色（`ADMIN`/`STAFF`/`CUSTOMER`）不可删除；删除时角色下仍有用户会被拒绝 |
+| 资源 | `GET/POST /admin/resources`、`GET /admin/resources/staff-candidates`、`PUT/DELETE /admin/resources/{id}` | 查询 `page,size,keyword,type,status`；`type` 为 `STAFF`/`ROOM`；技师必须绑定本商户非管理员用户（候选接口已过滤），名称留空默认取用户姓名；已被排班/库存/预约引用时不可删除 |
+| 排班/时段 | `GET/POST /admin/schedules`、`POST /admin/schedules/batch`、`PUT/DELETE /admin/schedules/{id}`、`GET /admin/schedules/{id}/slots`、`POST /admin/slots/{id}/lock`、`POST /admin/slots/{id}/unlock` | 查询 `page,size,resourceId,startDate,endDate,status`；保存按 `slotMinutes` 生成时段库存；同资源同日窗口不可重叠；已有预约占用时禁止改时间/步长及删除；批量最长 90 天、按 `weekdays`（1=周一…7=周日）过滤 |
 
 ### 5.6 规划接口（占位页对应，以后端契约为准）
 
 | 模块 | 接口（前缀 `/merchant`） |
 |---|---|
-| 资源 | `GET/POST /resources`、`PUT/DELETE /resources/{id}`、`PATCH /resources/{id}/status` |
-| 排班 | `GET/POST /schedules`、`PUT/DELETE /schedules/{id}`（返回生成/变更后的槽位数） |
+| 日历 | `GET /admin/calendar`（排班日历占位页，返回按天汇总 + 当日排班列表） |
 | 日历/时段 | `GET /calendar`、`GET /slots`、`POST /slots/{id}/lock`、`POST /slots/{id}/unlock` |
 | 预约 | `GET /reservations`、`GET /reservations/{id}`、`POST /reservations`（代客下单）、`POST /reservations/{id}/cancel`、`POST /reservations/{id}/checkin` |
 | 定金流水 | `GET /deposits`、`GET /deposits/{id}` |
@@ -347,7 +349,7 @@ GET 超时 10s、写操作 20s；`undefined`/`null`/空串参数不发送；外�
 | 角色管理 | `/roles` | 已实现 | 角色字典 CRUD（内置角色禁删、仍有用户时拒绝）；下方「内置角色权限范围」表只读展示 `ROLE_PERMISSIONS` 常量矩阵 |
 | 工作台 | `/dashboard` | 占位 | 指标卡 + 余量紧张时段 + 待处理清单，60s 轮询 |
 | 日历 | `/calendar` | 占位 | 见 §8 |
-| 排班 | `/schedules` | 占位 | 日期区间 + 资源筛选；窗口表单；保存展示生成槽位数 |
+| 排班 | `/schedules` | 已实现 | 资源/日期区间/状态筛选（写入 URL）；新增/编辑窗口抽屉（资源、日期、起止时间、容量、拆分步长、状态），保存提示生成时段数；批量排班（日期范围 + 重复星期，返回成功/跳过明细）；时段抽屉查看库存并锁定/释放；已有预约占用时禁用时间字段并引导改状态 |
 | 资源 | `/resources` | 已实现 | 技师/床位 Tab（类型写入 URL）；关键字 + 启停筛选；技师列表展示绑定用户；抽屉表单（类型创建后不可修改，技师从候选用下拉绑定、名称可留空默认取用户姓名，床位名称必填）；启停开关（停用二次确认）、删除二次确认（被引用时后端拒绝并提示） |
 | 预约列表 | `/reservations` | 占位 | 状态/日期/资源/服务/关键词筛选 + 快捷 Tab；行内核销、取消 |
 | 预约详情 | `/reservations/:id` | 占位 | 基本信息 + 状态时间线 + 操作栏 + 定金摘要 |
@@ -420,7 +422,7 @@ GET 超时 10s、写操作 20s；`undefined`/`null`/空串参数不发送；外�
 | 里程碑 | 范围 |
 |---|---|
 | M1 基础域 | 用户/角色/服务/资源已完成 |
-| M2 排班 | 排班列表与表单、生成结果反馈 |
+| M2 排班 | 排班列表与表单、批量排班、生成结果反馈、时段库存查看与锁定/释放（已完成） |
 | M3 日历核心 | 日视图（泳道 + 槽位 + 抽屉）、锁定/释放、周视图简化版 |
 | M4 预约闭环 | 列表、详情、核销（两种模式）、取消退款、代客下单 |
 | M5 流水与审计 | 定金流水、审计日志、工作台 |

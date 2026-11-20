@@ -41,6 +41,7 @@ export const queryKeys = {
   resourceStaffCandidates: (resourceId: string | null) =>
     ['resources', 'staff-candidates', resourceId ?? 'create'] as const,
   schedules: (params: Params) => ['schedules', params] as const,
+  scheduleSlots: (id: string) => ['schedules', 'slots', id] as const,
   reservations: (params: Params) => ['reservations', params] as const,
   reservationDetail: (id: string) => ['reservations', 'detail', id] as const,
   deposits: (params: Params) => ['deposits', params] as const,
