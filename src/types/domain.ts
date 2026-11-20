@@ -15,6 +15,15 @@ export const RESERVATION_STATUS = {
 
 export type ReservationStatus = (typeof RESERVATION_STATUS)[keyof typeof RESERVATION_STATUS]
 
+export const RESOURCE_TYPE = {
+  /** 技师 */
+  STAFF: 'STAFF',
+  /** 床位 / 房间 */
+  ROOM: 'ROOM',
+} as const
+
+export type ResourceType = (typeof RESOURCE_TYPE)[keyof typeof RESOURCE_TYPE]
+
 export const DEPOSIT_STATUS = {
   PENDING: 'PENDING',
   SUCCESS: 'SUCCESS',

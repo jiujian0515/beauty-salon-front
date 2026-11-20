@@ -1,4 +1,10 @@
-import type { DepositStatus, ReservationStatus, SlotState, StatusMeta } from '@/types/domain'
+import type {
+  DepositStatus,
+  ReservationStatus,
+  ResourceType,
+  SlotState,
+  StatusMeta,
+} from '@/types/domain'
 
 /** 状态文案与颜色：全站唯一来源，页面内禁止硬编码（BTD §8.9） */
 export const RESERVATION_STATUS_META: Record<ReservationStatus, StatusMeta> = {
@@ -17,6 +23,11 @@ export const DEPOSIT_STATUS_META: Record<DepositStatus, StatusMeta> = {
   REFUNDED: { label: '已退款', color: 'geekblue' },
   FAILED: { label: '支付失败', color: 'error' },
   EXPIRED: { label: '已关闭', color: 'default' },
+}
+
+export const RESOURCE_TYPE_META: Record<ResourceType, StatusMeta> = {
+  STAFF: { label: '技师', color: 'blue' },
+  ROOM: { label: '床位', color: 'purple' },
 }
 
 export const SLOT_STATE_META: Record<SlotState, StatusMeta> = {

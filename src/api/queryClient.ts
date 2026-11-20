@@ -38,6 +38,8 @@ export const queryKeys = {
   services: (params: Params) => ['services', params] as const,
   serviceDetail: (id: string) => ['services', 'detail', id] as const,
   resources: (params: Params) => ['resources', params] as const,
+  resourceStaffCandidates: (resourceId: string | null) =>
+    ['resources', 'staff-candidates', resourceId ?? 'create'] as const,
   schedules: (params: Params) => ['schedules', params] as const,
   reservations: (params: Params) => ['reservations', params] as const,
   reservationDetail: (id: string) => ['reservations', 'detail', id] as const,
