@@ -13,17 +13,19 @@ import type {
 } from '@/api/serviceItem'
 import { useInvalidate } from '@/hooks/useInvalidate'
 import { useListPage } from '@/hooks/useListPage'
+import { isServiceCategory } from '@/types/domain'
 
-/** 服务项目分页列表：支持关键字 + 上下架筛选，参数全部同步到 URL */
+/** 服务项目分页列表：支持关键字 + 上下架 + 分类筛选，参数全部同步到 URL */
 export function useServiceItemListPage() {
   return useListPage<ServiceItem>({
-    extraKeys: ['status'],
+    extraKeys: ['status', 'category'],
     key: (params) =>
       queryKeys.services({
         page: params.page,
         size: params.size,
         keyword: params.keyword,
         status: params.filters.status ?? '',
+        category: params.filters.category ?? '',
       }),
     query: (params) =>
       fetchServiceItemPage({
@@ -31,6 +33,7 @@ export function useServiceItemListPage() {
         size: params.size,
         keyword: params.keyword || undefined,
         status: params.filters.status ? Number(params.filters.status) : undefined,
+        category: isServiceCategory(params.filters.category) ? params.filters.category : undefined,
       }),
   })
 }

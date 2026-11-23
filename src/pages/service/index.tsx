@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { errorMessage } from '@/api/errors'
 import type { ServiceItem } from '@/api/serviceItem'
 import { DurationText, ListToolbar, MoneyText, PageHeader, QueryBoundary } from '@/components'
+import { SERVICE_CATEGORY_META, SERVICE_CATEGORY_OPTIONS } from '@/constants/status'
+import { isServiceCategory } from '@/types/domain'
 import { formatDateTime } from '@/utils/datetime'
 import { ServiceItemFormDrawer } from './components/ServiceItemFormDrawer'
 import { useDeleteServiceItem, useServiceItemListPage, useUpdateServiceItem } from './hooks'
@@ -92,6 +94,19 @@ export default function ServicePage() {
       ),
     },
     {
+      title: '分类',
+      dataIndex: 'category',
+      width: 140,
+      render: (value: string) =>
+        value ? (
+          <span className="text-slate-700">
+            {isServiceCategory(value) ? SERVICE_CATEGORY_META[value].label : value}
+          </span>
+        ) : (
+          <span className="text-slate-400">未分类</span>
+        ),
+    },
+    {
       title: '时长',
       dataIndex: 'durationMinutes',
       width: 110,
@@ -152,7 +167,7 @@ export default function ServicePage() {
     <div>
       <PageHeader
         title="服务项目"
-        description="维护服务名称、时长、价格与定金，控制上下架。价格与定金的修改不影响已创建预约。"
+        description="维护服务分类、名称、时长、价格与定金，控制上下架。价格与定金的修改不影响已创建预约。"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             新增服务项目
@@ -169,6 +184,14 @@ export default function ServicePage() {
           refreshing={list.isFetching && !list.isLoading}
           placeholder="搜索服务名称或描述"
         >
+          <Select
+            allowClear
+            className="w-[180px]"
+            placeholder="全部分类"
+            value={list.params.filters.category || undefined}
+            options={SERVICE_CATEGORY_OPTIONS}
+            onChange={(value?: string) => list.setFilter('category', value ?? '')}
+          />
           <Select
             allowClear
             className="w-[160px]"
@@ -190,7 +213,7 @@ export default function ServicePage() {
             columns={columns}
             dataSource={list.data?.records ?? []}
             loading={list.isFetching && !list.isLoading}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1140 }}
             pagination={list.pagination}
             locale={{ emptyText: '暂无服务项目' }}
           />

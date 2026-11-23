@@ -1,11 +1,14 @@
 import { http } from './http'
 import type { BackendPageResult, PageResult } from '@/types/api'
+import type { ServiceCategory } from '@/types/domain'
 
 /** 后端 ServiceItemResponse（Long 已序列化为字符串） */
 interface ServiceItemDto {
   id: string
   merchantId: string
   name: string
+  /** 服务分类 code，可为空（历史数据） */
+  category: string | null
   description: string | null
   durationMinutes: number
   priceCents: string
@@ -19,6 +22,8 @@ interface ServiceItemDto {
 export interface ServiceItem {
   id: string
   name: string
+  /** 服务分类 code，空串表示未分类 */
+  category: string
   description: string
   durationMinutes: number
   priceCents: number
@@ -34,10 +39,13 @@ export interface ServiceItemPageQuery {
   size: number
   keyword?: string
   status?: number
+  /** 按分类 code 精确筛选 */
+  category?: ServiceCategory
 }
 
 export interface ServiceItemCreatePayload {
   name: string
+  category: ServiceCategory
   description: string
   durationMinutes: number
   priceCents: number
@@ -52,6 +60,7 @@ function toServiceItem(dto: ServiceItemDto): ServiceItem {
   return {
     id: dto.id,
     name: dto.name,
+    category: dto.category ?? '',
     description: dto.description ?? '',
     durationMinutes: dto.durationMinutes,
     priceCents: Number(dto.priceCents),
@@ -71,6 +80,7 @@ export async function fetchServiceItemPage(
       size: query.size,
       keyword: query.keyword,
       status: query.status,
+      category: query.category,
     },
   })
   return {
@@ -81,9 +91,7 @@ export async function fetchServiceItemPage(
   }
 }
 
-export async function createServiceItem(
-  payload: ServiceItemCreatePayload,
-): Promise<ServiceItem> {
+export async function createServiceItem(payload: ServiceItemCreatePayload): Promise<ServiceItem> {
   return toServiceItem(await http.post<ServiceItemDto>('/admin/service-items', payload))
 }
 

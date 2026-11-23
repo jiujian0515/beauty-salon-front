@@ -1,11 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { App, Button, Drawer, Input, InputNumber, Radio, Space } from 'antd'
+import { App, Button, Drawer, Input, InputNumber, Radio, Select, Space } from 'antd'
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { errorMessage } from '@/api/errors'
 import type { ServiceItem } from '@/api/serviceItem'
 import { FormField } from '@/components'
 import { SERVICE_DURATION_STEP } from '@/constants/constants'
+import { SERVICE_CATEGORY_OPTIONS } from '@/constants/status'
+import { isServiceCategory } from '@/types/domain'
 import { fenToYuanInput, parseYuanToFen } from '@/utils/money'
 import { useCreateServiceItem, useUpdateServiceItem } from '../hooks'
 import { serviceItemSchema } from '../schema'
@@ -20,6 +22,7 @@ export interface ServiceItemFormDrawerProps {
 
 const EMPTY_FORM: ServiceItemForm = {
   name: '',
+  category: null,
   description: '',
   durationMinutes: 60,
   price: '0.00',
@@ -49,6 +52,7 @@ export function ServiceItemFormDrawer({ open, record, onClose }: ServiceItemForm
       record
         ? {
             name: record.name,
+            category: isServiceCategory(record.category) ? record.category : null,
             description: record.description,
             durationMinutes: record.durationMinutes,
             price: fenToYuanInput(record.priceCents),
@@ -63,8 +67,13 @@ export function ServiceItemFormDrawer({ open, record, onClose }: ServiceItemForm
 
   const submit = handleSubmit((values) => {
     const onError = (error: unknown) => message.error(errorMessage(error))
+    // 校验已保证必填，这里仅用于收窄类型
+    const category = values.category
+    if (!category) return
+
     const payload = {
       name: values.name.trim(),
+      category,
       description: values.description.trim(),
       durationMinutes: values.durationMinutes,
       priceCents: parseYuanToFen(values.price) ?? 0,
@@ -126,6 +135,24 @@ export function ServiceItemFormDrawer({ open, record, onClose }: ServiceItemForm
                 maxLength={128}
                 placeholder="请输入服务名称"
                 status={fieldState.error ? 'error' : undefined}
+              />
+            )}
+          />
+        </FormField>
+
+        <FormField label="服务分类" required error={errors.category?.message}>
+          <Controller
+            control={control}
+            name="category"
+            render={({ field, fieldState }) => (
+              <Select
+                value={field.value ?? undefined}
+                onChange={(value) => field.onChange(value ?? null)}
+                onBlur={field.onBlur}
+                options={SERVICE_CATEGORY_OPTIONS}
+                placeholder="请选择服务分类"
+                status={fieldState.error ? 'error' : undefined}
+                className="w-full"
               />
             )}
           />
