@@ -61,9 +61,27 @@
  * 按 CSS 层叠层规则，无层样式优先级高于任何 @layer 内的样式（与选择器权重无关），
  * 因此依赖 Tailwind 的 min-h-screen（同在 base 层）会被 .ant-layout 的 min-height: 0 覆盖。
  * 这里把覆盖规则放在 layer 之外，并用双类选择器确保在无层样式之间也胜出。
+ *
+ * 布局固定策略：外层锁死一屏高度且不滚动，Sider / Header 自然固定，
+ * 仅由 Content 内部滚动，避免整页滚动带动菜单和头部。
  */
 .ant-layout.app-layout {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 侧边栏内容超出时自身滚动，不撑破固定布局 */
+.ant-layout.app-layout .ant-layout-sider-children {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 内容区是唯一的滚动容器 */
+.ant-layout.app-layout .app-layout-content {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* 登录页柔光底纹：米色底 + 多层径向渐变，还原设计稿的宣纸质感 */

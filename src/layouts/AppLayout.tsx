@@ -139,7 +139,7 @@ export function AppLayout() {
             </Dropdown>
           </Space>
         </Header>
-        <Content className="p-6">
+        <Content className="app-layout-content flex-1 p-6">
           {!online ? (
             <Alert
               className="mb-4"

@@ -141,7 +141,11 @@ export function DayView({
         empty={slots.length === 0}
         emptyText="当天暂无排班，请先到「排班管理」生成时段"
       >
-        <div className="overflow-x-auto">
+        {/*
+         * overflow-x-auto 会让浏览器把 overflow-y 也算成 auto，时间轴底部 1~2px 的刻度线
+         * 会撑出纵向滚动条并截走滚轮。这里显式关闭纵向滚动，并留出 py-2 容纳这点溢出。
+         */}
+        <div className="overflow-x-auto overflow-y-hidden py-2">
           <div style={{ minWidth: TIME_COLUMN_WIDTH + lanes.length * LANE_WIDTH }}>
             <div className="flex border-b border-slate-200">
               <div
@@ -173,8 +177,17 @@ export function DayView({
                 {hourMarks.map((minute) => (
                   <div
                     key={minute}
-                    className="absolute right-2 -translate-y-1/2 text-xs text-slate-400"
-                    style={{ top: (minute - axisStart) * PX_PER_MINUTE }}
+                    className="absolute right-2 text-xs text-slate-400"
+                    style={{
+                      top: (minute - axisStart) * PX_PER_MINUTE,
+                      /* 首尾刻度不再上移半行，避免溢出到时间轴外产生纵向滚动 */
+                      transform:
+                        minute === axisStart
+                          ? 'none'
+                          : minute === axisEnd
+                            ? 'translateY(-100%)'
+                            : 'translateY(-50%)',
+                    }}
                   >
                     {String(Math.floor(minute / 60)).padStart(2, '0')}:00
                   </div>
