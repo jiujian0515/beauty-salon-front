@@ -2,12 +2,13 @@ import { z } from 'zod'
 import { MAX_AMOUNT_FEN } from '@/constants/constants'
 import { parseYuanToFen } from '@/utils/money'
 import { SERVICE_CATEGORY } from '@/types/domain'
+import type { ServiceCategory } from '@/types/domain'
 
 const nameSchema = z.string().trim().min(1, '请输入服务名称').max(128, '服务名称最长 128 个字符')
 
 /** 分类必填：界面展示中文名，提交时只传 code */
 const categorySchema = z
-  .enum([SERVICE_CATEGORY.SPA_BODY, SERVICE_CATEGORY.SPA_FACE])
+  .enum(Object.values(SERVICE_CATEGORY) as [ServiceCategory, ...ServiceCategory[]])
   .nullable()
   .superRefine((value, ctx) => {
     if (value === null) {

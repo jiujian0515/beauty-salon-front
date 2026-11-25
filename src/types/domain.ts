@@ -44,6 +44,21 @@ export function isServiceCategory(value: string | null | undefined): value is Se
   )
 }
 
+/** 判断后端返回的状态是否为已定义的预约状态 */
+export function isReservationStatus(value: string | null | undefined): value is ReservationStatus {
+  return value !== null && value !== undefined && value in RESERVATION_STATUS_MAP
+}
+
+const RESERVATION_STATUS_MAP: Record<ReservationStatus, true> = {
+  PENDING_PAYMENT: true,
+  CONFIRMED: true,
+  COMPLETED: true,
+  CANCELLED: true,
+  EXPIRED: true,
+  REFUNDING: true,
+  REFUNDED: true,
+}
+
 export const DEPOSIT_STATUS = {
   PENDING: 'PENDING',
   SUCCESS: 'SUCCESS',
